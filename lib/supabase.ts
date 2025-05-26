@@ -1,7 +1,17 @@
-// lib/supabase.ts
+// C:\promocode-share\lib\supabase.ts
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = process.env.https://vyilkatitgmoyaqexkay.supabase.co!;
-const supabaseAnonKey = process.env.eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ5aWxrYXRpdGdtb3lhcWV4a2F5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDc5ODYwNDgsImV4cCI6MjA2MzU2MjA0OH0.B6KDgQYuf_DRTGp-udTojUfSOEm4hnCayRr1QIFYz-E!;
+// 環境変数名は.env.localファイルで定義したものと完全に一致させる必要があります。
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
+// 環境変数が存在するか確認（デバッグ用）
+if (!supabaseUrl || !supabaseAnonKey) {
+  console.error("Supabase URL or Anon Key is missing!");
+  // 環境変数が設定されていない場合、エラーをスローするか、デフォルト値を設定するなど
+  // ここで適切なエラーハンドリングを行う
+}
+// createClient 関数に渡す引数は、文字列型である必要があります。
+// '!' はTypeScriptに「この変数はundefinedではないと断言する」ことを伝えます。
+// しかし、環境変数が実際に設定されていないと実行時にエラーになります。
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
