@@ -8,16 +8,13 @@ import CopyButton from '../../components/copyButton';
 const ITEMS_PER_PAGE = 9;
 
 interface CategoryPageProps {
-  params: {
-    slug: string;
-  };
-  searchParams?: {
-    page?: string;
-  };
+  params: { slug: string } | Promise<{ slug: string }>;
+  searchParams?: { page?: string };
 }
 
 export default async function CategoryPage({ params, searchParams }: CategoryPageProps) {
-  const { slug } = params;
+  const resolvedParams = await params;
+  const slug = resolvedParams.slug;
   const currentPage = Number(searchParams?.page) || 1;
   const offset = (currentPage - 1) * ITEMS_PER_PAGE;
 
