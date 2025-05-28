@@ -8,16 +8,20 @@ import CopyButton from '../../components/copyButton';
 const ITEMS_PER_PAGE = 9;
 
 interface CategoryPageProps {
-  // 修正点: params から Promise 型を削除
-  params: { slug: string };
-  searchParams?: { page?: string };
+  // Next.js 15の変更に従い、params を Promise 型で定義
+  // あなたが元々提示された修正案に合わせる
+  params: Promise<{ slug: string }>;
+  // searchParams も同様に Promise 型で定義（もしエラーが出るなら）
+  searchParams?: Promise<{ page?: string }>;
 }
 
-export default async function CategoryPage({ params, searchParams }: CategoryPageProps) {
-  // resolvedParams は不要になります
-  // const resolvedParams = await params; // この行は削除またはコメントアウト
-  const slug = params.slug; // 直接 params.slug を使用
-  const currentPage = Number(searchParams?.page) || 1;
+export default async function CategoryPage(props: CategoryPageProps) {
+  // params と searchParams が Promise 型なので、await で解決する
+  const resolvedParams = await props.params;
+  const resolvedSearchParams = await props.searchParams;
+
+  const slug = resolvedParams.slug; // 解決した params から slug を取得
+  const currentPage = Number(resolvedSearchParams?.page) || 1; // 解決した searchParams から page を取得
   const offset = (currentPage - 1) * ITEMS_PER_PAGE;
 
   const currentCategory = CATEGORIES.find(cat => cat.slug === slug);
