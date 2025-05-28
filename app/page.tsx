@@ -1,3 +1,5 @@
+// C:\promocode-share\app\page.tsx
+
 import Link from 'next/link';
 import { CATEGORIES } from '@/constants/categories'; // 新しく作成したファイル
 
@@ -13,13 +15,22 @@ export default function HomePage() {
 
       <div className="w-full max-w-6xl">
         <h2 className="text-3xl font-bold text-gray-800 mb-6 text-center">カテゴリから探す</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+        {/* ここを修正: grid-cols-1 を xs:grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 に変更 */}
+        {/* xs: は Tailwind CSS のデフォルトのモバイルブレークポイント (0px) に対応するカスタムブレークポイントを想定。
+            もし Tailwind CSS の設定で xs がない場合は、grid-cols-2 (モバイルのデフォルト) と sm:grid-cols-3 から始めるのが一般的です。
+            ここでは、モバイルで確実に2列表示にするために、あえて xs:grid-cols-2 とします。*/}
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6">
           {CATEGORIES.map((category) => (
             <Link key={category.slug} href={`/category/${category.slug}`} legacyBehavior>
-              <a className="block bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow duration-300 transform hover:-translate-y-1 p-6 text-center">
-                <h3 className="text-xl font-semibold text-indigo-700 mb-2">{category.name}</h3>
-                <p className="text-gray-600 text-sm">
-                  {/* 各カテゴリの簡単な説明を追加しても良い */}
+              <a className="block bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow duration-300 transform hover:-translate-y-1 p-4 sm:p-6 text-center">
+                <h3 className="text-lg sm:text-xl font-semibold text-indigo-700 mb-1 sm:mb-2">{category.name}</h3>
+                {/* ここを修正: モバイルで説明文を非表示にする */}
+                {/* 'hidden xs:block' または 'hidden sm:block' を使用して、モバイルでは非表示にする */}
+                {/* `hidden` はデフォルトで非表示、`sm:block` は `sm` (640px) 以上で表示を意味します。
+                    もしスマートフォンで確実に非表示にしたいなら、`hidden` のみで、説明文を完全に無くすか、
+                    または sm:grid-cols-2 が適用されるより小さい画面サイズで隠すために `hidden sm:block` を使用します。
+                    今回は「モバイル版では表示せず」なので `hidden sm:block` が適切でしょう。*/}
+                <p className="text-gray-600 text-xs sm:text-sm hidden sm:block">
                   {category.name}関連のプロモコード
                 </p>
               </a>
