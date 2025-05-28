@@ -3,7 +3,7 @@
 import { supabase } from '@/lib/supabase';
 import { CATEGORIES } from '@/constants/categories';
 import Link from 'next/link';
-import CopyButton from '../../components/CopyButton';
+import CopyButton from '../../components/copyButton';
 
 const ITEMS_PER_PAGE = 9;
 
