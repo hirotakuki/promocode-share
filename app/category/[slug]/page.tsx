@@ -8,13 +8,15 @@ import CopyButton from '../../components/copyButton';
 const ITEMS_PER_PAGE = 9;
 
 interface CategoryPageProps {
-  params: { slug: string } | Promise<{ slug: string }>;
+  // 修正点: params から Promise 型を削除
+  params: { slug: string };
   searchParams?: { page?: string };
 }
 
 export default async function CategoryPage({ params, searchParams }: CategoryPageProps) {
-  const resolvedParams = await params;
-  const slug = resolvedParams.slug;
+  // resolvedParams は不要になります
+  // const resolvedParams = await params; // この行は削除またはコメントアウト
+  const slug = params.slug; // 直接 params.slug を使用
   const currentPage = Number(searchParams?.page) || 1;
   const offset = (currentPage - 1) * ITEMS_PER_PAGE;
 
