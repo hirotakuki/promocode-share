@@ -1,6 +1,6 @@
-// C:\promocode-share\app\components\Header.tsx
+// C:\promocode-share\app\components\header.tsx
 
-'use client';
+'use client'; // クライアントコンポーネントであることを明示
 
 import Link from 'next/link';
 import { useState, useEffect } from 'react';
@@ -10,6 +10,7 @@ import { useRouter } from 'next/navigation';
 
 export default function Header() {
   const [isCategoryDropdownOpen, setIsCategoryDropdownOpen] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false); // モバイルメニューの状態
   const [user, setUser] = useState<any>(null);
   const [loadingUser, setLoadingUser] = useState(true);
   const router = useRouter();
@@ -43,6 +44,20 @@ export default function Header() {
       router.push('/');
     }
     setLoadingUser(false);
+    setIsMobileMenuOpen(false); // ログアウトしたらモバイルメニューを閉じる
+  };
+
+  const handleCategoryDropdownToggle = () => {
+    setIsCategoryDropdownOpen(!isCategoryDropdownOpen);
+  };
+
+  const handleMobileMenuToggle = () => {
+    setIsMobileMenuOpen(!isMobileMenuOpen);
+  };
+
+  const closeMobileMenu = () => {
+    setIsMobileMenuOpen(false);
+    setIsCategoryDropdownOpen(false); // カテゴリードロップダウンも閉じる
   };
 
   return (
@@ -55,13 +70,16 @@ export default function Header() {
           </a>
         </Link>
 
-        <nav className="flex items-center space-x-6">
-          {/* カテゴリー ドロップダウンメニュー */}
-          <div className="relative">
+        {/* PC用ナビゲーション */}
+        <nav className="hidden md:flex items-center space-x-6">
+          {/* カテゴリー ドロップダウンメニュー (PC用) */}
+          <div
+            className="relative"
+            onMouseEnter={() => setIsCategoryDropdownOpen(true)}
+            onMouseLeave={() => setIsCategoryDropdownOpen(false)}
+          >
             <button
-              onClick={() => setIsCategoryDropdownOpen(!isCategoryDropdownOpen)}
-              onMouseEnter={() => setIsCategoryDropdownOpen(true)}
-              onMouseLeave={() => setIsCategoryDropdownOpen(false)}
+              onClick={handleCategoryDropdownToggle}
               className="text-white hover:text-indigo-200 font-medium py-2 px-3 rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-300"
             >
               カテゴリー
@@ -80,8 +98,6 @@ export default function Header() {
 
             {isCategoryDropdownOpen && (
               <div
-                onMouseEnter={() => setIsCategoryDropdownOpen(true)}
-                onMouseLeave={() => setIsCategoryDropdownOpen(false)}
                 className="absolute left-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-10"
               >
                 {CATEGORIES.map((cat: Category) => (
@@ -98,12 +114,11 @@ export default function Header() {
             )}
           </div>
 
-          {/* ログイン状態に応じたリンク */}
+          {/* ログイン状態に応じたリンク (PC用) */}
           {!loadingUser && (
             <>
               {user ? (
                 <>
-                  {/* 管理者のみに表示されるリンク */}
                   {user.user_metadata?.is_admin === true && (
                     <Link href="/admin" legacyBehavior>
                       <a className="bg-purple-500 hover:bg-purple-600 text-white font-bold py-2 px-4 rounded-full transition-colors duration-200 shadow-md">
@@ -111,8 +126,6 @@ export default function Header() {
                       </a>
                     </Link>
                   )}
-                  {/* ★ここから追加・修正します★ */}
-                  {/* 自分の投稿ページへのリンク */}
                   <Link href="/my-promocodes" legacyBehavior>
                     <a className="bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-2 px-4 rounded-full transition-colors duration-200 shadow-md">
                       自分の投稿
@@ -140,7 +153,122 @@ export default function Header() {
             </>
           )}
         </nav>
+
+        {/* モバイル用ハンバーガーメニューアイコン */}
+        <div className="md:hidden flex items-center">
+          <button
+            onClick={handleMobileMenuToggle}
+            className="text-white focus:outline-none"
+            aria-label="Toggle mobile menu"
+          >
+            {isMobileMenuOpen ? (
+              // 閉じるアイコン (X)
+              <svg className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            ) : (
+              // ハンバーガーアイコン
+              <svg className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16m-7 6h7" />
+              </svg>
+            )}
+          </button>
+        </div>
       </div>
+
+      {/* モバイル用ドロップダウンメニュー */}
+      {isMobileMenuOpen && (
+        <div className="md:hidden bg-indigo-800 pb-4 shadow-lg">
+          <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3">
+            {/* カテゴリー ドロップダウン (モバイル用) */}
+            <div className="relative w-full">
+              <button
+                onClick={handleCategoryDropdownToggle}
+                className="block w-full text-left text-white hover:bg-indigo-700 py-2 px-3 rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-300"
+              >
+                カテゴリー
+                <svg
+                  className={`ml-2 h-4 w-4 inline-block transform transition-transform duration-200 ${
+                    isCategoryDropdownOpen ? 'rotate-180' : 'rotate-0'
+                  }`}
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+
+              {isCategoryDropdownOpen && (
+                <div className="mt-1 bg-indigo-700 rounded-md shadow-lg py-1 z-10">
+                  {CATEGORIES.map((cat: Category) => (
+                    <Link key={cat.slug} href={`/category/${cat.slug}`} legacyBehavior>
+                      <a
+                        className="block px-4 py-2 text-white hover:bg-indigo-600 transition-colors duration-150"
+                        onClick={closeMobileMenu} // メニュー閉じる
+                      >
+                        {cat.name}
+                      </a>
+                    </Link>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* ログイン状態に応じたリンク (モバイル用) */}
+            {!loadingUser && (
+              <>
+                {user ? (
+                  <>
+                    {user.user_metadata?.is_admin === true && (
+                      <Link href="/admin" legacyBehavior>
+                        <a
+                          className="block bg-purple-500 hover:bg-purple-600 text-white font-bold py-2 px-4 rounded-md transition-colors duration-200 shadow-md text-center"
+                          onClick={closeMobileMenu}
+                        >
+                          管理
+                        </a>
+                      </Link>
+                    )}
+                    <Link href="/my-promocodes" legacyBehavior>
+                      <a
+                        className="block bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-2 px-4 rounded-md transition-colors duration-200 shadow-md text-center"
+                        onClick={closeMobileMenu}
+                      >
+                        自分の投稿
+                      </a>
+                    </Link>
+                    <Link href="/submit-promocode" legacyBehavior>
+                      <a
+                        className="block bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-2 px-4 rounded-md transition-colors duration-200 shadow-md text-center"
+                        onClick={closeMobileMenu}
+                      >
+                        プロモコードを投稿
+                      </a>
+                    </Link>
+                    <button
+                      onClick={handleLogout}
+                      className="block w-full bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-md transition-colors duration-200 shadow-md text-center"
+                    >
+                      ログアウト
+                    </button>
+                  </>
+                ) : (
+                  <Link href="/login" legacyBehavior>
+                    <a
+                      className="block bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-md transition-colors duration-200 shadow-md text-center"
+                      onClick={closeMobileMenu}
+                    >
+                      ログイン
+                    </a>
+                  </Link>
+                )}
+              </>
+            )}
+          </div>
+        </div>
+      )}
     </header>
   );
 }
