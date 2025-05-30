@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { CATEGORIES } from '@/constants/categories';
 import { supabase } from '@/lib/supabase';
-import Header from '@/app/components/header'; // Import the Header component
+// import Header from '@/app/components/header'; // ★この行を削除します★
 
 // プロモコードデータの型定義
 interface Promocode {
@@ -31,8 +31,10 @@ export default async function HomePage() {
 
   return (
     <div className="min-h-screen bg-gray-100 flex flex-col items-center py-12 px-4 sm:px-6 lg:px-8">
-      {/* Include the Header component here */}
-      <Header />
+      {/*
+        ★この行を削除します★
+        <Header />
+      */}
 
       <h1 className="text-5xl font-extrabold text-gray-900 mb-8 text-center leading-tight">
         紹介コードで、<br className="sm:hidden"/>おトクをシェアしよう！
