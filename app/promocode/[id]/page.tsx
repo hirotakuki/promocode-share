@@ -19,22 +19,16 @@ interface Promocode {
 }
 
 interface PromocodePageProps {
-  // Next.js 15 の変更点に合わせて、params を Promise 型として定義
   params: Promise<{ id: string }>;
-  // searchParams も Promise 型として定義（存在する場合）
   searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
 }
 
 export default async function PromocodePage(props: PromocodePageProps) {
-  // params と searchParams が Promise 型なので、await で解決する
-  // この await は、Next.js 15 の Async Request API の挙動に準拠しています。
   const resolvedParams = await props.params;
-  const resolvedSearchParams = await props.searchParams; // searchParams が存在する場合
+  const resolvedSearchParams = await props.searchParams; 
 
   const id = resolvedParams.id;
-  // const searchParams = resolvedSearchParams; // 必要であればここから値を取り出す
 
-  // サーバーサイドでデータをフェッチ
   const { data: promocode, error } = await supabase
     .from('promocodes')
     .select('*')
@@ -76,14 +70,14 @@ export default async function PromocodePage(props: PromocodePageProps) {
         {/* クライアントコンポーネントを子としてレンダリングし、データを渡す */}
         <AdAndCodeDisplay promocode={promocode} />
 
-        {/* 関連カテゴリへのリンクなど、追加コンテンツ (これはサーバーサイドでレンダリング可能) */}
-        <div className="mt-10 text-center">
+        {/* 関連カテゴリへのリンクは AdAndCodeDisplay.tsx に移動したので削除 */}
+        {/* <div className="mt-10 text-center">
           <Link href={`/category/${promocode.category_slug}`} legacyBehavior>
             <a className="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700">
               {promocode.service_name}の他のプロモコードを見る
             </a>
           </Link>
-        </div>
+        </div> */}
       </div>
     </div>
   );
