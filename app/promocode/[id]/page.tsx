@@ -1,9 +1,9 @@
 // app/promocode/[id]/page.tsx
-// 'use client'; // 削除 - サーバーコンポーネントにする
+// 'use client'; // サーバーコンポーネントなので不要
 
 import { supabase } from '@/lib/supabase';
 import Link from 'next/link';
-import AdAndCodeDisplay from '@/app/components/AdAndCodeDisplay'; // パスを修正しました
+import AdAndCodeDisplay from '@/app/components/AdAndCodeDisplay'; // パスを修正済み
 
 // プロモコードデータの型定義
 interface Promocode {
@@ -19,10 +19,14 @@ interface Promocode {
 }
 
 interface PromocodePageProps {
+  // params は Promise ではなく、直接解決済みのオブジェクトとして定義
   params: { id: string };
+  // searchParams も同様に Promise ではない型として定義 (PromocodePageでは通常searchParamsは使わないが、念のため)
+  searchParams?: { [key: string]: string | string[] | undefined };
 }
 
 export default async function PromocodePage({ params }: PromocodePageProps) {
+  // params はすでに解決されているため、await は不要
   const { id } = params;
 
   // サーバーサイドでデータをフェッチ
@@ -37,7 +41,7 @@ export default async function PromocodePage({ params }: PromocodePageProps) {
     return (
       <div className="min-h-screen bg-gray-100 flex flex-col items-center justify-center py-12 px-4">
         <h1 className="text-4xl font-bold text-gray-800 mb-4">エラーが発生しました</h1>
-        <p className="text-lg text-gray-600 mb-8">{error.message}</p>
+        <p className="text-lg text-gray-600 mb-8">データの取得に失敗しました: {error.message}</p>
         <Link href="/" legacyBehavior>
           <a className="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700">
             ホームに戻る
