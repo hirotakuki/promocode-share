@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { CATEGORIES } from '@/constants/categories';
 import { supabase } from '@/lib/supabase';
+import Image from 'next/image'; // Import Image component for optimized images
 
 // プロモコードデータの型定義
 interface Promocode {
@@ -30,11 +31,30 @@ export default async function HomePage() {
 
   return (
     <div className="min-h-screen bg-gray-100 flex flex-col items-center py-12 px-4 sm:px-6 lg:px-8">
+      {/* Header for logo and site title - Adjusted for both mobile and desktop */}
+      <header className="w-full max-w-6xl flex items-center justify-center sm:justify-start mb-8">
+        <Link href="/" legacyBehavior>
+          <a className="flex items-center">
+            {/* Replace with your actual logo path */}
+            <Image
+              src="/path/to/your/logo.png" // **IMPORTANT: Update this path to your logo image**
+              alt="Promocode Share Logo"
+              width={48} // Adjust logo size as needed
+              height={48} // Adjust logo size as needed
+              className="mr-2"
+            />
+            <span className="text-2xl sm:text-3xl font-bold text-gray-900 hidden sm:block"> {/* Only show site name on desktop */}
+              Promocode Share
+            </span>
+          </a>
+        </Link>
+      </header>
+
       <h1 className="text-5xl font-extrabold text-gray-900 mb-8 text-center leading-tight">
         紹介コードで、<br className="sm:hidden"/>おトクをシェアしよう！
       </h1>
       <p className="text-lg sm:text-xl text-gray-700 mb-12 text-center max-w-2xl">
-        「使った人も、紹介した人も、みんなが嬉しい」そんな**Win-Winのおトク情報**がここにあります。あなたも手軽にコードをシェアして、新しい割引を見つけませんか？
+        「使った人も、紹介した人も、みんなが嬉しい」あなたもコードをシェアして、新しい割引を見つけませんか？
       </p>
 
       {/* 最新のプロモコードセクション */}
@@ -42,7 +62,7 @@ export default async function HomePage() {
         <section className="w-full max-w-6xl mb-16">
           <h2 className="text-3xl font-bold text-gray-800 mb-6 text-center">新着プロモコード</h2>
           <div className="flex flex-row overflow-x-auto lg:grid lg:grid-cols-4 lg:gap-6 pb-4">
-            {recentPromocodes.map((promo: Promocode) => ( // 型アノテーションを追加
+            {recentPromocodes.map((promo: Promocode) => (
               <div
                 key={promo.id}
                 className="flex-none w-72 sm:w-80 md:w-96 lg:w-auto
@@ -50,12 +70,10 @@ export default async function HomePage() {
                           transition-all duration-300 hover:scale-105 mr-4 lg:mr-0"
               >
                 <div className="p-6">
-                  {/* サービス名をより目立つように変更 */}
                   <h3 className="text-2xl font-bold text-indigo-700 mb-2">
                     {promo.service_name}
                   </h3>
                   <p className="text-sm font-semibold text-gray-500 mb-1">
-                    {/* ここに割引内容を移動するか、サービス名と入れ替えることでサービス名を強調 */}
                     {promo.discount}
                   </p>
                   <p className="text-gray-700 text-sm mb-4 line-clamp-3">{promo.description}</p>
@@ -65,11 +83,9 @@ export default async function HomePage() {
                         コードを見る
                       </a>
                     </Link>
-                    {/* 利用回数を表示 (optional) */}
                     <p className="text-sm text-gray-600">
                       利用回数: <span className="font-bold text-indigo-700">{promo.uses || 0}</span>
                     </p>
-                    {/* 有効期限を表示 (optional) */}
                     {promo.expires_at && (
                       <p className="text-sm text-gray-600 ml-auto">
                         期限: <span className="font-bold text-red-500">{new Date(promo.expires_at).toLocaleDateString()}</span>
