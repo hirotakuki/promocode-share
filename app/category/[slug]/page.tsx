@@ -1,12 +1,10 @@
 // C:\promocode-share\app\category\[slug]\page.tsx
 
-// 'use client'; は削除
-
 import { supabase } from '@/lib/supabase';
 import { CATEGORIES } from '@/constants/categories';
 import Link from 'next/link';
-// CopyButton のインポートは不要なので削除
-// import CopyButton from '../../components/copyButton'; 
+import type { Metadata } from 'next'; // Metadata型をインポート
+import { notFound } from 'next/navigation';
 
 const ITEMS_PER_PAGE = 9;
 
@@ -28,6 +26,28 @@ interface CategoryPageProps {
   params: Promise<{ slug: string }>;
   // searchParams も Promise 型として定義
   searchParams?: Promise<{ page?: string }>;
+}
+
+// ここにgenerateMetadata関数を追加
+export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
+  const resolvedParams = await params; // Promiseを解決
+  const categorySlug = resolvedParams.slug;
+  const category = CATEGORIES.find(cat => cat.slug === categorySlug);
+
+  if (!category) {
+    // カテゴリが見つからない場合でもメタデータは返す
+    return {
+      title: 'カテゴリが見つかりません | Promocode Share',
+      description: 'お探しのカテゴリは見つかりませんでした。他のプロモコードやカテゴリをご覧ください。',
+    };
+  }
+
+  const categoryName = category.name;
+
+  return {
+    title: `${categoryName}のプロモコード・クーポン | Promocode Share`,
+    description: `${categoryName}に関する最新のプロモコードや紹介コードをチェック！${categoryName}でのお得な割引を見つけよう。`,
+  };
 }
 
 export default async function CategoryPage(props: CategoryPageProps) {
@@ -85,7 +105,6 @@ export default async function CategoryPage(props: CategoryPageProps) {
               {promocodes.map((promo: Promocode) => (
                 <div key={promo.id} className="bg-white rounded-lg shadow-lg overflow-hidden transition-all duration-300 hover:scale-105">
                   <div className="p-4 sm:p-6">
-                    {/* サービス名をより目立つように変更 */}
                     <h2 className="text-xl sm:text-2xl font-bold text-gray-800 mb-2">
                       {promo.service_name}
                     </h2>
@@ -99,11 +118,9 @@ export default async function CategoryPage(props: CategoryPageProps) {
                           コードを見る
                         </a>
                       </Link>
-                      {/* 利用回数を表示 (optional) */}
                       <p className="text-sm text-gray-600">
                         利用回数: <span className="font-bold text-indigo-700">{promo.uses || 0}</span>
                       </p>
-                      {/* 有効期限があれば表示 */}
                       {promo.expires_at && (
                         <p className="text-sm text-gray-600 ml-auto">
                           期限: <span className="font-bold text-red-500">{new Date(promo.expires_at).toLocaleDateString()}</span>
@@ -149,6 +166,11 @@ export default async function CategoryPage(props: CategoryPageProps) {
           <div className="text-center py-10">
             <p className="text-xl text-gray-600">このカテゴリにはまだプロモコードがありません。</p>
             <p className="text-md text-gray-500 mt-2">新しいプロモコードの投稿をお待ちしております！</p>
+            <Link href="/submit-promocode" legacyBehavior>
+              <a className="mt-6 inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700">
+                プロモコードを投稿する
+              </a>
+            </Link>
           </div>
         )}
       </div>

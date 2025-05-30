@@ -7,12 +7,14 @@ import './globals.css'; // グローバルCSSのインポート
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
-  title: 'Promocode Share', // タイトルは「プロモコードシェア」でもOK
-  description: 'みんなでプロモコードを共有するプラットフォーム',
+  // タイトルをより具体的でSEOフレンドリーなものに変更
+  title: 'Promocode Share | お得な紹介コード・クーポンをシェアしよう',
+  // ディスクリプションを、検索流入を意識した魅力的な説明に変更
+  description: '使って嬉しい、シェアして嬉しい！最新のプロモコードや紹介コードで賢くお買い物を楽しもう。カテゴリー別に探せるお得な情報満載のプラットフォーム。',
 };
 
 // Headerコンポーネントをインポートします
-import Header from './components/header'; // ★ここを追加★
+import Header from './components/header';
 
 export default function RootLayout({
   children,
@@ -22,13 +24,13 @@ export default function RootLayout({
   return (
     <html lang="ja">
       <body className={inter.className}>
-        {/* ★ここから既存のheaderタグを削除し、Headerコンポーネントに置き換えます★ */}
-        <Header /> {/* 新しいHeaderコンポーネントをレンダリング */}
-        {/* ★ここまでを置き換えます★ */}
+        {/* Headerコンポーネントをレンダリング */}
+        <Header />
 
-        <main>{children}</main> {/* mainタグは残しておくと良いでしょう */}
+        {/* 各ページコンテンツがここに表示されます */}
+        <main>{children}</main>
 
-        {/* フッターはそのまま残します */}
+        {/* フッター */}
         <footer className="bg-gray-800 text-white p-6 text-center mt-10">
           <div className="max-w-7xl mx-auto">
             <p>&copy; {new Date().getFullYear()} Promocode Share. All rights reserved.</p>
