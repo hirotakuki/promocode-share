@@ -7,6 +7,7 @@ import { useState, useEffect } from 'react';
 import { CATEGORIES, Category } from '@/constants/categories';
 import { supabase } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image'; // Import Image component for optimized images
 
 export default function Header() {
   const [isCategoryDropdownOpen, setIsCategoryDropdownOpen] = useState(false);
@@ -61,20 +62,22 @@ export default function Header() {
   return (
     <header className="bg-gradient-to-r from-indigo-700 to-purple-600 text-white shadow-lg sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
-        
-        {/* ロゴリンク（画面幅で切り替え） */}
+
+        {/* Site Title with Logo on Left */}
         <Link href="/" legacyBehavior>
           <a className="flex items-center hover:opacity-90 transition-opacity">
-            <img
-              src="/promocode-share-header.png"
-              alt="Promocode Share"
-              className="hidden md:block h-10 w-auto"
+            {/* Logo Image */}
+            <Image
+              src="/promocode-share-logo.png" // **IMPORTANT: Verify this path to your logo image**
+              alt="Promocode Share Logo"
+              width={32} // Adjust logo width as needed
+              height={32} // Adjust logo height as needed
+              className="mr-2" // Add some margin to the right of the logo
             />
-            <img
-              src="/promocode-share-logo.png"
-              alt="Promocode Share"
-              className="block md:hidden h-10 w-auto"
-            />
+            {/* Site Title Text */}
+            <span className="text-2xl sm:text-3xl font-bold text-white">
+              Promocode Share
+            </span>
           </a>
         </Link>
 

@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { CATEGORIES } from '@/constants/categories';
 import { supabase } from '@/lib/supabase';
-import Image from 'next/image'; // Import Image component for optimized images
+import Header from '@/app/components/header'; // Import the Header component
 
 // プロモコードデータの型定義
 interface Promocode {
@@ -31,24 +31,8 @@ export default async function HomePage() {
 
   return (
     <div className="min-h-screen bg-gray-100 flex flex-col items-center py-12 px-4 sm:px-6 lg:px-8">
-      {/* Header for logo and site title - Adjusted for both mobile and desktop */}
-      <header className="w-full max-w-6xl flex items-center justify-center sm:justify-start mb-8">
-        <Link href="/" legacyBehavior>
-          <a className="flex items-center">
-            {/* Replace with your actual logo path */}
-            <Image
-              src="/path/to/your/logo.png" // **IMPORTANT: Update this path to your logo image**
-              alt="Promocode Share Logo"
-              width={48} // Adjust logo size as needed
-              height={48} // Adjust logo size as needed
-              className="mr-2"
-            />
-            <span className="text-2xl sm:text-3xl font-bold text-gray-900 hidden sm:block"> {/* Only show site name on desktop */}
-              Promocode Share
-            </span>
-          </a>
-        </Link>
-      </header>
+      {/* Include the Header component here */}
+      <Header />
 
       <h1 className="text-5xl font-extrabold text-gray-900 mb-8 text-center leading-tight">
         紹介コードで、<br className="sm:hidden"/>おトクをシェアしよう！
