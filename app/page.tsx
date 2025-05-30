@@ -2,20 +2,31 @@
 
 import Link from 'next/link';
 import { CATEGORIES } from '@/constants/categories';
-import { supabase } from '@/lib/supabase'; // Supabaseクライアントをインポート
-import CopyButton from './components/copyButton'; // CopyButtonコンポーネントをインポート
+import { supabase } from '@/lib/supabase';
+// import CopyButton from './components/copyButton'; // 不要になるので削除またはコメントアウト
 
-export default async function HomePage() { // asyncキーワードを追加
-  // 最新のプロモコードを4つ取得
+// プロモコードデータの型定義 (PromocodeType の代わりに Promocode としています)
+interface Promocode {
+  id: string;
+  service_name: string;
+  code: string;
+  discount: string;
+  description: string;
+  category_slug: string;
+  uses: number;
+  created_at: string;
+  expires_at?: string;
+}
+
+export default async function HomePage() {
   const { data: recentPromocodes, error } = await supabase
     .from('promocodes')
     .select('*')
-    .order('created_at', { ascending: false }) // 作成日時で降順ソート
-    .limit(4); // 4件に制限
+    .order('created_at', { ascending: false })
+    .limit(4);
 
-  if (error) { // エラーハンドリング
+  if (error) {
     console.error('Error fetching recent promocodes:', error.message);
-    // エラーが発生してもページ自体は表示されるように、promocodesを空の配列とします
   }
 
   return (
@@ -32,28 +43,37 @@ export default async function HomePage() { // asyncキーワードを追加
         <section className="w-full max-w-6xl mb-16">
           <h2 className="text-3xl font-bold text-gray-800 mb-6 text-center">新着プロモコード</h2>
           <div className="flex flex-row overflow-x-auto lg:grid lg:grid-cols-4 lg:gap-6 pb-4">
-            {/* flex flex-row: 横並び、overflow-x-auto: 横スクロール可能
-                lg:grid lg:grid-cols-4 lg:gap-6: ラージスクリーン以上ではグリッド表示 */}
-            {recentPromocodes.map((promo) => (
+            {recentPromocodes.map((promo: Promocode) => ( // 型アノテーションを追加
               <div
                 key={promo.id}
                 className="flex-none w-72 sm:w-80 md:w-96 lg:w-auto
                            bg-white rounded-lg shadow-lg overflow-hidden
-                           transition-all duration-300 hover:scale-105 mr-4 lg:mr-0" // mr-4 でモバイル時の間隔
+                           transition-all duration-300 hover:scale-105 mr-4 lg:mr-0"
               >
                 <div className="p-6">
                   <p className="text-sm font-semibold text-gray-500 mb-1">{promo.service_name}</p>
-                  <h3
-                    className="text-2xl font-bold text-gray-800 mb-2 cursor-pointer hover:text-indigo-600 transition-colors"
-                  >
-                    {promo.code} <CopyButton code={promo.code} />
+                  <h3 className="text-2xl font-bold text-gray-800 mb-2">
+                    {/* ここで直接コードを表示しない */}
+                    {/* promo.code の代わりに「コードを見る」ボタンを配置 */}
+                    <Link href={`/promocode/${promo.id}`} legacyBehavior>
+                      <a className="text-indigo-600 hover:text-indigo-700 transition-colors cursor-pointer">
+                        コードを見る
+                      </a>
+                    </Link>
                   </h3>
                   <p className="text-indigo-600 font-semibold mb-3">{promo.discount}</p>
                   <p className="text-gray-700 text-sm mb-4 line-clamp-3">{promo.description}</p>
                   <div className="flex items-center justify-between mt-4">
+                    {/* 利用回数を表示 (optional) */}
                     <p className="text-sm text-gray-600">
                       利用回数: <span className="font-bold text-indigo-700">{promo.uses || 0}</span>
                     </p>
+                    {/* 有効期限を表示 (optional) */}
+                    {promo.expires_at && (
+                      <p className="text-sm text-gray-600 ml-auto">
+                        期限: <span className="font-bold text-red-500">{new Date(promo.expires_at).toLocaleDateString()}</span>
+                      </p>
+                    )}
                   </div>
                 </div>
               </div>
@@ -62,6 +82,7 @@ export default async function HomePage() { // asyncキーワードを追加
         </section>
       )}
 
+      {/* 以下、既存のカテゴリセクションと投稿ボタン */}
       <div className="w-full max-w-6xl">
         <h2 className="text-3xl font-bold text-gray-800 mb-6 text-center">カテゴリから探す</h2>
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6">

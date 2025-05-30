@@ -19,15 +19,20 @@ interface Promocode {
 }
 
 interface PromocodePageProps {
-  // params は Promise ではなく、直接解決済みのオブジェクトとして定義
-  params: { id: string };
-  // searchParams も同様に Promise ではない型として定義 (PromocodePageでは通常searchParamsは使わないが、念のため)
-  searchParams?: { [key: string]: string | string[] | undefined };
+  // Next.js 15 の変更点に合わせて、params を Promise 型として定義
+  params: Promise<{ id: string }>;
+  // searchParams も Promise 型として定義（存在する場合）
+  searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
 }
 
-export default async function PromocodePage({ params }: PromocodePageProps) {
-  // params はすでに解決されているため、await は不要
-  const { id } = params;
+export default async function PromocodePage(props: PromocodePageProps) {
+  // params と searchParams が Promise 型なので、await で解決する
+  // この await は、Next.js 15 の Async Request API の挙動に準拠しています。
+  const resolvedParams = await props.params;
+  const resolvedSearchParams = await props.searchParams; // searchParams が存在する場合
+
+  const id = resolvedParams.id;
+  // const searchParams = resolvedSearchParams; // 必要であればここから値を取り出す
 
   // サーバーサイドでデータをフェッチ
   const { data: promocode, error } = await supabase

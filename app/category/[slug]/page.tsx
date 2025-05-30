@@ -1,11 +1,10 @@
 // C:\promocode-share\app\category\[slug]\page.tsx
 
-// 'use client'; は削除
-
+// 'use client'; は削除されたまま
 import { supabase } from '@/lib/supabase';
 import { CATEGORIES } from '@/constants/categories';
 import Link from 'next/link';
-import CopyButton from '../../components/copyButton';
+// import CopyButton from '../../components/copyButton'; // 不要になるので削除またはコメントアウト
 
 const ITEMS_PER_PAGE = 9;
 
@@ -23,23 +22,16 @@ interface Promocode {
 }
 
 interface CategoryPageProps {
-  // paramsとsearchParamsはPromise型として渡されることを想定（Next.js 15の特定の挙動に合わせる）
-  params: Promise<{ slug: string }>;
-  searchParams?: Promise<{ page?: string }>;
+  // 以前の議論に基づいて、paramsはPromiseではない型に戻す
+  params: { slug: string };
+  searchParams?: { page?: string };
 }
 
-export default async function CategoryPage(props: CategoryPageProps) {
-  // params と searchParams が Promise 型なので、await で解決する
-  // このawaitは、Next.js 15のAsync Request APIの挙動に準拠しています。
-  const resolvedParams = await props.params;
-  // searchParams は `props` の中の `searchParams` プロパティなので、`props` が解決された後アクセスします。
-  // `props.then(p => p.searchParams)` のように書くと、`props` 自体がPromiseの場合に正しいですが、
-  // PagePropsの型定義としては `searchParams?: Promise<...>` としているので、ここでは `await props.searchParams` が
-  // 型定義に合致します。もしエラーが出る場合は、前回の `props.then(...)` を試してください。
-  const resolvedSearchParams = await props.searchParams;
+export default async function CategoryPage({ params, searchParams }: CategoryPageProps) {
+  // params はすでに解決されているため、await は不要
+  const slug = params.slug;
+  const currentPage = Number(searchParams?.page) || 1; // searchParamsもawait不要
 
-  const slug = resolvedParams.slug;
-  const currentPage = Number(resolvedSearchParams?.page) || 1;
   const offset = (currentPage - 1) * ITEMS_PER_PAGE;
 
   const currentCategory = CATEGORIES.find(cat => cat.slug === slug);
@@ -84,25 +76,31 @@ export default async function CategoryPage(props: CategoryPageProps) {
 
         {promocodes && promocodes.length > 0 ? (
           <>
-            {/* モバイルで2〜3列表示、PCで3列表示 */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
               {promocodes.map((promo: Promocode) => (
                 <div key={promo.id} className="bg-white rounded-lg shadow-lg overflow-hidden transition-all duration-300 hover:scale-105">
-                  <div className="p-4 sm:p-6"> {/* パディングをモバイル向けに調整 */}
+                  <div className="p-4 sm:p-6">
                     <p className="text-sm font-semibold text-gray-500 mb-1">{promo.service_name}</p>
-                    <h2
-                      className="text-xl sm:text-2xl font-bold text-gray-800 mb-2 cursor-pointer hover:text-indigo-600 transition-colors"
-                    >
-                      {promo.code} <CopyButton code={promo.code} />
+                    <h2 className="text-xl sm:text-2xl font-bold text-gray-800 mb-2">
+                      {/* ここで直接コードを表示しない */}
+                      {/* promo.code の代わりに「コードを見る」ボタンを配置 */}
+                      <Link href={`/promocode/${promo.id}`} legacyBehavior>
+                        <a className="text-indigo-600 hover:text-indigo-700 transition-colors cursor-pointer">
+                          コードを見る
+                        </a>
+                      </Link>
                     </h2>
                     <p className="text-indigo-600 font-semibold mb-3">{promo.discount}</p>
-                    {/* 説明文を表示 */}
                     <p className="text-gray-700 text-sm mb-4 line-clamp-3">{promo.description}</p>
                     <div className="flex items-center justify-between mt-4">
-                      {/* 利用回数を削除し、有効期限があれば表示 */}
+                      {/* 利用回数を表示 (optional) */}
+                      <p className="text-sm text-gray-600">
+                        利用回数: <span className="font-bold text-indigo-700">{promo.uses || 0}</span>
+                      </p>
+                      {/* 有効期限を表示 (optional) */}
                       {promo.expires_at && (
-                        <p className="text-sm text-gray-600">
-                          有効期限: <span className="font-bold text-red-500">{new Date(promo.expires_at).toLocaleDateString()}</span>
+                        <p className="text-sm text-gray-600 ml-auto">
+                          期限: <span className="font-bold text-red-500">{new Date(promo.expires_at).toLocaleDateString()}</span>
                         </p>
                       )}
                     </div>
@@ -119,7 +117,6 @@ export default async function CategoryPage(props: CategoryPageProps) {
                   </a>
                 </Link>
               )}
-              {/* ページネーションリンク */}
               {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
                 <Link key={page} href={`/category/${slug}?page=${page}`} legacyBehavior>
                   <a
