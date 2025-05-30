@@ -5,10 +5,8 @@
 import { supabase } from '@/lib/supabase';
 import { CATEGORIES } from '@/constants/categories';
 import Link from 'next/link';
-// CopyButton のインポートパスは、もし CategoryPage で直接使わないなら削除してもOKです。
-// もし使うなら、以前修正したように '@/app/components/copyButton' のエイリアスパスを使うのが良いでしょう。
-// 今回のコードでは直接使われていないため、コメントアウトしておきます。
-// import CopyButton from '../../components/copyButton'; // このパスは必要に応じて調整してください
+// CopyButton のインポートは不要なので削除
+// import CopyButton from '../../components/copyButton'; 
 
 const ITEMS_PER_PAGE = 9;
 
@@ -34,12 +32,10 @@ interface CategoryPageProps {
 
 export default async function CategoryPage(props: CategoryPageProps) {
   // params と searchParams が Promise 型なので、await で解決する
-  // 修正: ここが重複していた await を削除し、正しい記述に
   const resolvedParams = await props.params;
-  const resolvedSearchParams = await props.searchParams; // ★ここを修正しました★
+  const resolvedSearchParams = await props.searchParams;
 
   const slug = resolvedParams.slug;
-  // resolvedSearchParams が存在する場合に .page プロパティにアクセス
   const currentPage = Number(resolvedSearchParams?.page) || 1;
   const offset = (currentPage - 1) * ITEMS_PER_PAGE;
 
@@ -85,24 +81,24 @@ export default async function CategoryPage(props: CategoryPageProps) {
 
         {promocodes && promocodes.length > 0 ? (
           <>
-            {/* モバイルで2〜3列表示、PCで3列表示 */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
               {promocodes.map((promo: Promocode) => (
                 <div key={promo.id} className="bg-white rounded-lg shadow-lg overflow-hidden transition-all duration-300 hover:scale-105">
-                  <div className="p-4 sm:p-6"> {/* パディングをモバイル向けに調整 */}
-                    <p className="text-sm font-semibold text-gray-500 mb-1">{promo.service_name}</p>
+                  <div className="p-4 sm:p-6">
+                    {/* サービス名をより目立つように変更 */}
                     <h2 className="text-xl sm:text-2xl font-bold text-gray-800 mb-2">
-                      {/* コードを表示せず、詳細ページへのリンクにする */}
+                      {promo.service_name}
+                    </h2>
+                    <p className="text-sm font-semibold text-gray-500 mb-1">
+                      {promo.discount}
+                    </p>
+                    <p className="text-gray-700 text-sm mb-4 line-clamp-3">{promo.description}</p>
+                    <div className="flex items-center justify-between mt-4">
                       <Link href={`/promocode/${promo.id}`} legacyBehavior>
-                        <a className="text-indigo-600 hover:text-indigo-700 transition-colors cursor-pointer">
+                        <a className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700">
                           コードを見る
                         </a>
                       </Link>
-                    </h2>
-                    <p className="text-indigo-600 font-semibold mb-3">{promo.discount}</p>
-                    {/* 説明文を表示 */}
-                    <p className="text-gray-700 text-sm mb-4 line-clamp-3">{promo.description}</p>
-                    <div className="flex items-center justify-between mt-4">
                       {/* 利用回数を表示 (optional) */}
                       <p className="text-sm text-gray-600">
                         利用回数: <span className="font-bold text-indigo-700">{promo.uses || 0}</span>
@@ -127,7 +123,6 @@ export default async function CategoryPage(props: CategoryPageProps) {
                   </a>
                 </Link>
               )}
-              {/* ページネーションリンク */}
               {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
                 <Link key={page} href={`/category/${slug}?page=${page}`} legacyBehavior>
                   <a

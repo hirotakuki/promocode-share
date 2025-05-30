@@ -3,9 +3,8 @@
 import Link from 'next/link';
 import { CATEGORIES } from '@/constants/categories';
 import { supabase } from '@/lib/supabase';
-// import CopyButton from './components/copyButton'; // 不要になるので削除またはコメントアウト
 
-// プロモコードデータの型定義 (PromocodeType の代わりに Promocode としています)
+// プロモコードデータの型定義
 interface Promocode {
   id: string;
   service_name: string;
@@ -51,19 +50,21 @@ export default async function HomePage() {
                            transition-all duration-300 hover:scale-105 mr-4 lg:mr-0"
               >
                 <div className="p-6">
-                  <p className="text-sm font-semibold text-gray-500 mb-1">{promo.service_name}</p>
-                  <h3 className="text-2xl font-bold text-gray-800 mb-2">
-                    {/* ここで直接コードを表示しない */}
-                    {/* promo.code の代わりに「コードを見る」ボタンを配置 */}
+                  {/* サービス名をより目立つように変更 */}
+                  <h3 className="text-2xl font-bold text-indigo-700 mb-2">
+                    {promo.service_name}
+                  </h3>
+                  <p className="text-sm font-semibold text-gray-500 mb-1">
+                    {/* ここに割引内容を移動するか、サービス名と入れ替えることでサービス名を強調 */}
+                    {promo.discount}
+                  </p>
+                  <p className="text-gray-700 text-sm mb-4 line-clamp-3">{promo.description}</p>
+                  <div className="flex items-center justify-between mt-4">
                     <Link href={`/promocode/${promo.id}`} legacyBehavior>
-                      <a className="text-indigo-600 hover:text-indigo-700 transition-colors cursor-pointer">
+                      <a className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700">
                         コードを見る
                       </a>
                     </Link>
-                  </h3>
-                  <p className="text-indigo-600 font-semibold mb-3">{promo.discount}</p>
-                  <p className="text-gray-700 text-sm mb-4 line-clamp-3">{promo.description}</p>
-                  <div className="flex items-center justify-between mt-4">
                     {/* 利用回数を表示 (optional) */}
                     <p className="text-sm text-gray-600">
                       利用回数: <span className="font-bold text-indigo-700">{promo.uses || 0}</span>
