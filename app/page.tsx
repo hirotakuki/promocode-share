@@ -1,9 +1,23 @@
 // C:\promocode-share\app\page.tsx
 
 import Link from 'next/link';
-import { CATEGORIES } from '@/constants/categories'; // 新しく作成したファイル
+import { CATEGORIES } from '@/constants/categories';
+import { supabase } from '@/lib/supabase'; // Supabaseクライアントをインポート
+import CopyButton from './components/copyButton'; // CopyButtonコンポーネントをインポート
 
-export default function HomePage() {
+export default async function HomePage() { // asyncキーワードを追加
+  // 最新のプロモコードを4つ取得
+  const { data: recentPromocodes, error } = await supabase
+    .from('promocodes')
+    .select('*')
+    .order('created_at', { ascending: false }) // 作成日時で降順ソート
+    .limit(4); // 4件に制限
+
+  if (error) { // エラーハンドリング
+    console.error('Error fetching recent promocodes:', error.message);
+    // エラーが発生してもページ自体は表示されるように、promocodesを空の配列とします
+  }
+
   return (
     <div className="min-h-screen bg-gray-100 flex flex-col items-center py-12 px-4 sm:px-6 lg:px-8">
       <h1 className="text-5xl font-extrabold text-gray-900 mb-8 text-center leading-tight">
@@ -13,23 +27,48 @@ export default function HomePage() {
         様々なカテゴリの最新プロモコードを簡単に見つけて、お得にショッピングやサービスを利用しましょう。
       </p>
 
+      {/* 最新のプロモコードセクション */}
+      {recentPromocodes && recentPromocodes.length > 0 && (
+        <section className="w-full max-w-6xl mb-16">
+          <h2 className="text-3xl font-bold text-gray-800 mb-6 text-center">新着プロモコード</h2>
+          <div className="flex flex-row overflow-x-auto lg:grid lg:grid-cols-4 lg:gap-6 pb-4">
+            {/* flex flex-row: 横並び、overflow-x-auto: 横スクロール可能
+                lg:grid lg:grid-cols-4 lg:gap-6: ラージスクリーン以上ではグリッド表示 */}
+            {recentPromocodes.map((promo) => (
+              <div
+                key={promo.id}
+                className="flex-none w-72 sm:w-80 md:w-96 lg:w-auto
+                           bg-white rounded-lg shadow-lg overflow-hidden
+                           transition-all duration-300 hover:scale-105 mr-4 lg:mr-0" // mr-4 でモバイル時の間隔
+              >
+                <div className="p-6">
+                  <p className="text-sm font-semibold text-gray-500 mb-1">{promo.service_name}</p>
+                  <h3
+                    className="text-2xl font-bold text-gray-800 mb-2 cursor-pointer hover:text-indigo-600 transition-colors"
+                  >
+                    {promo.code} <CopyButton code={promo.code} />
+                  </h3>
+                  <p className="text-indigo-600 font-semibold mb-3">{promo.discount}</p>
+                  <p className="text-gray-700 text-sm mb-4 line-clamp-3">{promo.description}</p>
+                  <div className="flex items-center justify-between mt-4">
+                    <p className="text-sm text-gray-600">
+                      利用回数: <span className="font-bold text-indigo-700">{promo.uses || 0}</span>
+                    </p>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
       <div className="w-full max-w-6xl">
         <h2 className="text-3xl font-bold text-gray-800 mb-6 text-center">カテゴリから探す</h2>
-        {/* ここを修正: grid-cols-1 を xs:grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 に変更 */}
-        {/* xs: は Tailwind CSS のデフォルトのモバイルブレークポイント (0px) に対応するカスタムブレークポイントを想定。
-            もし Tailwind CSS の設定で xs がない場合は、grid-cols-2 (モバイルのデフォルト) と sm:grid-cols-3 から始めるのが一般的です。
-            ここでは、モバイルで確実に2列表示にするために、あえて xs:grid-cols-2 とします。*/}
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6">
           {CATEGORIES.map((category) => (
             <Link key={category.slug} href={`/category/${category.slug}`} legacyBehavior>
               <a className="block bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow duration-300 transform hover:-translate-y-1 p-4 sm:p-6 text-center">
                 <h3 className="text-lg sm:text-xl font-semibold text-indigo-700 mb-1 sm:mb-2">{category.name}</h3>
-                {/* ここを修正: モバイルで説明文を非表示にする */}
-                {/* 'hidden xs:block' または 'hidden sm:block' を使用して、モバイルでは非表示にする */}
-                {/* `hidden` はデフォルトで非表示、`sm:block` は `sm` (640px) 以上で表示を意味します。
-                    もしスマートフォンで確実に非表示にしたいなら、`hidden` のみで、説明文を完全に無くすか、
-                    または sm:grid-cols-2 が適用されるより小さい画面サイズで隠すために `hidden sm:block` を使用します。
-                    今回は「モバイル版では表示せず」なので `hidden sm:block` が適切でしょう。*/}
                 <p className="text-gray-600 text-xs sm:text-sm hidden sm:block">
                   {category.name}関連のプロモコード
                 </p>
