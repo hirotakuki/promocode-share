@@ -31,10 +31,10 @@ export default async function HomePage() {
   return (
     <div className="min-h-screen bg-gray-100 flex flex-col items-center py-12 px-4 sm:px-6 lg:px-8">
       <h1 className="text-5xl font-extrabold text-gray-900 mb-8 text-center leading-tight">
-        お得なプロモコードを<br className="sm:hidden"/>見つけよう
+        紹介コードで、<br className="sm:hidden"/>おトクをシェアしよう！
       </h1>
-      <p className="text-xl text-gray-700 mb-12 text-center max-w-2xl">
-        様々なカテゴリの最新プロモコードを簡単に見つけて、お得にショッピングやサービスを利用しましょう。
+      <p className="text-lg sm:text-xl text-gray-700 mb-12 text-center max-w-2xl">
+        「使った人も、紹介した人も、みんなが嬉しい」そんな**Win-Winのおトク情報**がここにあります。あなたも手軽にコードをシェアして、新しい割引を見つけませんか？
       </p>
 
       {/* 最新のプロモコードセクション */}
@@ -46,8 +46,8 @@ export default async function HomePage() {
               <div
                 key={promo.id}
                 className="flex-none w-72 sm:w-80 md:w-96 lg:w-auto
-                           bg-white rounded-lg shadow-lg overflow-hidden
-                           transition-all duration-300 hover:scale-105 mr-4 lg:mr-0"
+                          bg-white rounded-lg shadow-lg overflow-hidden
+                          transition-all duration-300 hover:scale-105 mr-4 lg:mr-0"
               >
                 <div className="p-6">
                   {/* サービス名をより目立つように変更 */}
