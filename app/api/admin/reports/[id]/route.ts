@@ -12,12 +12,11 @@ const supabaseAdmin = createClient(supabaseUrl, supabaseServiceRoleKey, {
 
 export async function PATCH(
   request: Request,
-  { params }: { params: Promise<{ id: string }> } // ★ここを修正: params を Promise でラップ★
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  // ★追加: params Promise を解決してから id にアクセス★
   const resolvedParams = await params;
   const reportId = resolvedParams.id;
-  const { status } = await request.json(); // status (e.g., 'resolved', 'dismissed') を取得
+  const { status } = await request.json();
 
   if (!reportId || !status) {
     return NextResponse.json({ error: 'Report ID and status are required' }, { status: 400 });
@@ -28,14 +27,15 @@ export async function PATCH(
       .from('reported_promocodes')
       .update({ status: status })
       .eq('id', reportId)
-      .select(); // 更新されたデータを取得
+      .select();
 
     if (error) {
       console.error('Error updating reported promocode status:', error);
+      console.error('Supabase error details:', error); // ★詳細なエラー情報をログ出力★
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    return NextResponse.json(data[0], { status: 200 }); // 更新された報告を返す
+    return NextResponse.json(data[0], { status: 200 });
   } catch (e) {
     console.error('API Route error (PATCH report):', e);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
