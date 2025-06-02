@@ -31,13 +31,17 @@ export async function GET() {
     }
 
     // 報告されたプロモコードを取得
+    // ★★★ 修正ポイント: .eq('status', 'pending') を削除しました ★★★
     const { data: reportedData, error: fetchReportedError } = await supabaseAdmin // こちらも supabaseAdmin を使用
       .from('reported_promocodes')
       .select(`
-        *,
+        id,
+        promocode_id,
+        reason,
+        created_at,
+        status,
         promocode:promocodes(service_name, code, discount, category_slug)
       `)
-      .eq('status', 'pending')
       .order('created_at', { ascending: false });
 
     if (fetchReportedError) {
@@ -47,7 +51,7 @@ export async function GET() {
 
     return NextResponse.json({ promocodes: promoData, reportedPromocodes: reportedData });
 
-  } catch (error) {
+  } catch (error: any) { // エラーの型を any に変更
     console.error('API Route error:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
