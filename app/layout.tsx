@@ -3,6 +3,7 @@
 import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import './globals.css'; // グローバルCSSのインポート
+import Link from 'next/link'; // Linkコンポーネントをインポート
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -15,7 +16,8 @@ export const metadata: Metadata = {
 
 // Headerコンポーネントをインポートします
 import Header from './components/header';
-import ContactForm from './components/ContactForm'; // ★ ContactFormをインポート
+// ContactFormのインポートは不要になります
+// import ContactForm from './components/ContactForm';
 
 export default function RootLayout({
   children,
@@ -24,28 +26,33 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="ja">
-      <body className={inter.className}>
+      <body className={inter.className + " flex flex-col min-h-screen"}> {/* 最小の高さを設定してフッターを一番下に固定 */}
         {/* Headerコンポーネントをレンダリング */}
         <Header />
 
         {/* 各ページコンテンツがここに表示されます */}
-        <main>{children}</main>
+        <main className="flex-grow">{children}</main> {/* mainタグが残りのスペースを占めるように設定 */}
 
         {/* フッター */}
-        <footer className="bg-gray-800 text-white p-6 mt-10"> {/* text-center を削除または調整 */}
+        <footer className="bg-gray-800 text-white p-6 mt-10">
           <div className="max-w-7xl mx-auto">
-            {/* お問い合わせフォームをここに追加 */}
-            {/* フォームが中央揃えにならないよう、必要に応じて text-left や mx-auto を ContactForm 側かここで調整 */}
-            <div className="md:w-2/3 lg:w-1/2 mx-auto text-left"> {/* フォームの幅とセンタリング調整例 */}
-              <ContactForm />
+            {/* お問い合わせフォームの代わりにリンクを追加 */}
+            <div className="text-center mb-6"> {/* フッターリンクセクションを中央寄せに調整 */}
+              <nav className="flex justify-center space-x-6">
+                <Link href="/privacy" className="hover:underline">
+                  プライバシーポリシー
+                </Link>
+                <Link href="/terms" className="hover:underline">
+                  利用規約
+                </Link>
+                <Link href="/contact" className="hover:underline"> {/* 新しいお問い合わせページへのリンク */}
+                  お問い合わせ
+                </Link>
+              </nav>
             </div>
 
-            <div className="mt-10 border-t border-gray-700 pt-6 text-center"> {/* 元のフッターコンテンツは中央揃えを維持 */}
+            <div className="border-t border-gray-700 pt-6 text-center">
               <p>&copy; {new Date().getFullYear()} Promocode Share. All rights reserved.</p>
-              <p className="text-sm mt-2">
-                <a href="/privacy" className="hover:underline">プライバシーポリシー</a> |{' '}
-                <a href="/terms" className="hover:underline">利用規約</a>
-              </p>
             </div>
           </div>
         </footer>
