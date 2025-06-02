@@ -8,7 +8,8 @@ import { useRouter } from 'next/navigation';
 import { CATEGORIES } from '@/constants/categories';
 import Link from 'next/link';
 
-// PromocodeWithUser インターフェースの定義を更新
+// PromocodeWithUser インターフェースの定義
+// プロモコードデータと、投稿者（profilesテーブル）の情報を結合した形
 interface PromocodeWithUser extends Record<string, any> {
   id: string;
   service_name: string;
@@ -18,82 +19,128 @@ interface PromocodeWithUser extends Record<string, any> {
   category_slug: string;
   created_at: string;
   user_id: string; // promocodes テーブルの user_id カラム
-  expiry_date: string | null; // ★追加: 利用期限はオプションなので string | null
+  expiry_date: string | null; // 利用期限はオプションなので string | null
   user?: { // user_id を介して結合される profiles テーブルのデータ
     email: string; // profiles テーブルに email カラムがあることを想定
   };
 }
 
+// 新しい報告インターフェース
+// 報告されたプロモコードのデータ構造
+interface ReportedPromocode {
+  id: string;
+  promocode_id: string;
+  reason: string;
+  created_at: string;
+  status: 'pending' | 'resolved' | 'dismissed'; // 報告ステータス
+  promocode?: { // 報告されたプロモコードの参照情報
+    service_name: string;
+    code: string;
+    discount: string;
+    category_slug: string;
+  };
+}
+
 export default function AdminPage() {
+  // プロモコード一覧のstate
   const [promocodes, setPromocodes] = useState<PromocodeWithUser[]>([]);
+  // 報告されたプロモコード一覧のstate
+  const [reportedPromocodes, setReportedPromocodes] = useState<ReportedPromocode[]>([]);
+  // ローディング状態のstate
   const [loading, setLoading] = useState(true);
+  // エラーメッセージのstate
   const [error, setError] = useState<string | null>(null);
+  // Next.jsルーターのフック
   const router = useRouter();
 
   // --- 編集モーダル関連のstate ---
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [editingPromocode, setEditingPromocode] = useState<PromocodeWithUser | null>(null);
-  const [editServiceName, setEditServiceName] = useState('');
-  const [editCode, setEditCode] = useState('');
-  const [editDescription, setEditDescription] = useState('');
-  const [editDiscount, setEditDiscount] = useState('');
-  const [editCategory, setEditCategory] = useState('');
-  const [editExpiryDate, setEditExpiryDate] = useState<string | null>(null); // YYYY-MM-DD 形式
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false); // 編集モーダルの表示状態
+  const [editingPromocode, setEditingPromocode] = useState<PromocodeWithUser | null>(null); // 編集中のプロモコードデータ
+  const [editServiceName, setEditServiceName] = useState(''); // 編集フォーム用サービス名
+  const [editCode, setEditCode] = useState(''); // 編集フォーム用コード
+  const [editDescription, setEditDescription] = useState(''); // 編集フォーム用説明
+  const [editDiscount, setEditDiscount] = useState(''); // 編集フォーム用割引内容
+  const [editCategory, setEditCategory] = useState(''); // 編集フォーム用カテゴリ
+  const [editExpiryDate, setEditExpiryDate] = useState<string | null>(null); // 編集フォーム用利用期限 (YYYY-MM-DD 形式)
 
-  const [editSubmitError, setEditSubmitError] = useState<string | null>(null);
-  const [editSubmitSuccess, setEditSubmitSuccess] = useState(false);
+  const [editSubmitError, setEditSubmitError] = useState<string | null>(null); // 編集送信時のエラーメッセージ
+  const [editSubmitSuccess, setEditSubmitSuccess] = useState(false); // 編集送信時の成功メッセージ
   // --- 編集モーダル関連のstate ここまで ---
 
+  // コンポーネントマウント時に管理者権限をチェックし、データをフェッチ
   useEffect(() => {
-    const checkAdminAndFetchPromocodes = async () => {
-      setLoading(true);
+    const checkAdminAndFetchData = async () => {
+      setLoading(true); // ローディング開始
+
+      // Supabaseセッションの取得
       const { data: { session }, error: sessionError } = await supabase.auth.getSession();
 
+      // セッションエラーまたは未ログインの場合
       if (sessionError || !session || !session.user) {
         setError('ログインしていません。');
-        router.push('/login');
+        router.push('/login'); // ログインページへリダイレクト
         return;
       }
 
+      // 管理者権限の確認
       const isAdmin = session.user.user_metadata?.is_admin === true;
 
       if (!isAdmin) {
         setError('管理者権限がありません。');
-        router.push('/');
+        router.push('/'); // ホームページへリダイレクト
         return;
       }
 
       try {
-        // プロモコードと投稿者情報（profiles テーブルから）を結合して取得
-        const { data, error: fetchError } = await supabase
+        // 全プロモコードと投稿者情報（profiles テーブルから）を結合して取得
+        const { data: promoData, error: fetchPromoError } = await supabase
           .from('promocodes')
           .select(`
             *,
             user:profiles(email)
           `)
-          .order('created_at', { ascending: false });
+          .order('created_at', { ascending: false }); // 作成日時で降順ソート
 
-        if (fetchError) {
-          throw fetchError;
+        if (fetchPromoError) {
+          throw fetchPromoError;
         }
-        setPromocodes(data as unknown as PromocodeWithUser[] || []);
+        setPromocodes(promoData as unknown as PromocodeWithUser[] || []); // 取得したプロモコードをstateにセット
+
+        // 報告されたプロモコードを取得
+        const { data: reportedData, error: fetchReportedError } = await supabase
+          .from('reported_promocodes')
+          .select(`
+            *,
+            promocode:promocodes(service_name, code, discount, category_slug)
+          `) // 報告されたプロモコードの詳細も結合して取得
+          .eq('status', 'pending') // ステータスが 'pending' (保留中) のもののみ取得
+          .order('created_at', { ascending: false }); // 作成日時で降順ソート
+
+        if (fetchReportedError) {
+          throw fetchReportedError;
+        }
+        setReportedPromocodes(reportedData as ReportedPromocode[] || []); // 取得した報告をstateにセット
+
       } catch (err: any) {
-        console.error('プロモコードの取得に失敗しました:', err);
-        setError(`プロモコードの取得に失敗しました: ${err.message}`);
+        console.error('データの取得に失敗しました:', err);
+        setError(`データの取得に失敗しました: ${err.message}`);
       } finally {
-        setLoading(false);
+        setLoading(false); // ローディング終了
       }
     };
 
-    checkAdminAndFetchPromocodes();
-  }, [router]);
+    checkAdminAndFetchData();
+  }, [router]); // routerが変更されたときに再実行
 
+  // プロモコード削除ハンドラ
   const handleDeletePromocode = async (id: string) => {
-    if (!confirm('本当にこのプロモコードを削除しますか？')) {
+    // ユーザーに確認メッセージを表示（alertの代わりにwindow.confirmを使用）
+    if (!window.confirm('本当にこのプロモコードを削除しますか？')) {
       return;
     }
 
     try {
+      // Supabaseからプロモコードを削除
       const { error: deleteError } = await supabase
         .from('promocodes')
         .delete()
@@ -103,49 +150,82 @@ export default function AdminPage() {
         throw deleteError;
       }
 
+      // 成功したら、stateから該当プロモコードを削除
       setPromocodes(prevPromocodes => prevPromocodes.filter(promo => promo.id !== id));
-      alert('プロモコードが正常に削除されました。');
+      // 削除されたプロモコードに関連する報告もリストから削除
+      setReportedPromocodes(prevReports => prevReports.filter(report => report.promocode_id !== id));
+      // ユーザーに成功メッセージを表示（alertの代わりにカスタムUIを使用することも可能）
+      // alert('プロモコードが正常に削除されました。');
     } catch (err: any) {
       console.error('プロモコードの削除に失敗しました:', err);
-      alert(`プロモコードの削除に失敗しました: ${err.message}`);
+      // alert(`プロモコードの削除に失敗しました: ${err.message}`);
+    }
+  };
+
+  // 報告のステータスを更新する関数
+  const handleUpdateReportStatus = async (reportId: string, newStatus: 'resolved' | 'dismissed') => {
+    try {
+      // Supabaseで報告のステータスを更新
+      const { data, error: updateError } = await supabase
+        .from('reported_promocodes')
+        .update({ status: newStatus })
+        .eq('id', reportId)
+        .select(); // 更新されたデータを取得
+
+      if (updateError) {
+        throw updateError;
+      }
+
+      // 報告リストから更新された報告を削除（またはステータスを更新）
+      // ここでは、ステータスが変更された報告は「pending」リストから削除されるようにフィルター
+      setReportedPromocodes(prevReports => prevReports.filter(report => report.id !== reportId));
+      // alert(`報告を「${newStatus === 'resolved' ? '解決済み' : '却下済み'}」にしました。`);
+    } catch (err: any) {
+      console.error('報告ステータスの更新に失敗しました:', err);
+      // alert(`報告ステータスの更新に失敗しました: ${err.message}`);
     }
   };
 
   // --- 編集モーダル関連の関数 ---
+  // 編集ボタンクリック時のハンドラ
   const handleEditClick = (promo: PromocodeWithUser) => {
     setEditingPromocode(promo);
     setEditServiceName(promo.service_name);
     setEditCode(promo.code);
     setEditDescription(promo.description);
     setEditDiscount(promo.discount);
-    // スラッグから名前への変換
+    // スラッグからカテゴリ名への変換
     setEditCategory(CATEGORIES.find(cat => cat.slug === promo.category_slug)?.name || promo.category_slug);
     setEditExpiryDate(promo.expiry_date); // YYYY-MM-DD 形式
-    setIsEditModalOpen(true);
-    setEditSubmitError(null);
-    setEditSubmitSuccess(false);
+    setIsEditModalOpen(true); // モーダルを開く
+    setEditSubmitError(null); // エラーメッセージをクリア
+    setEditSubmitSuccess(false); // 成功メッセージをクリア
   };
 
+  // 編集モーダルを閉じるハンドラ
   const handleEditModalClose = () => {
-    setIsEditModalOpen(false);
-    setEditingPromocode(null);
-    setEditSubmitError(null);
-    setEditSubmitSuccess(false);
+    setIsEditModalOpen(false); // モーダルを閉じる
+    setEditingPromocode(null); // 編集中のプロモコードをクリア
+    setEditSubmitError(null); // エラーメッセージをクリア
+    setEditSubmitSuccess(false); // 成功メッセージをクリア
   };
 
+  // 編集フォーム送信ハンドラ
   const handleEditSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!editingPromocode) return;
+    if (!editingPromocode) return; // 編集中のプロモコードがない場合は何もしない
 
-    setEditSubmitError(null);
-    setEditSubmitSuccess(false);
+    setEditSubmitError(null); // エラーメッセージをクリア
+    setEditSubmitSuccess(false); // 成功メッセージをクリア
 
+    // 説明文にURLが含まれていないかチェック
     const urlRegex = /(https?:\/\/|www\.)[^\s/$.?#].[^\s]*/i;
     if (urlRegex.test(editDescription)) {
       setEditSubmitError('説明にウェブサイトのリンクを含めることはできません。');
       return;
     }
 
+    // 選択されたカテゴリ名からスラッグを取得
     const selectedCategorySlug = CATEGORIES.find(cat => cat.name === editCategory)?.slug;
 
     if (!selectedCategorySlug) {
@@ -154,6 +234,7 @@ export default function AdminPage() {
     }
 
     try {
+      // Supabaseでプロモコードを更新
       const { data, error: updateError } = await supabase
         .from('promocodes')
         .update({
@@ -164,7 +245,7 @@ export default function AdminPage() {
           category_slug: selectedCategorySlug,
           expiry_date: editExpiryDate, // null または YYYY-MM-DD 形式の文字列
         })
-        .eq('id', editingPromocode.id)
+        .eq('id', editingPromocode.id) // 編集中のプロモコードのIDで指定
         .select(`
             *,
             user:profiles(email)
@@ -174,14 +255,13 @@ export default function AdminPage() {
         throw updateError;
       }
 
-      // 成功したら、リストを更新
+      // 成功したら、プロモコードリストを更新
       setPromocodes(prevPromocodes =>
         prevPromocodes.map(promo =>
           promo.id === editingPromocode.id ? (data[0] as PromocodeWithUser) : promo
         )
       );
-      setEditSubmitSuccess(true);
-      // alert('プロモコードが正常に更新されました。');
+      setEditSubmitSuccess(true); // 成功メッセージを表示
       // handleEditModalClose(); // 自動で閉じるか、ユーザーに成功メッセージを見せるか検討
     } catch (err: any) {
       console.error('プロモコードの更新に失敗しました:', err);
@@ -190,6 +270,7 @@ export default function AdminPage() {
   };
   // --- 編集モーダル関連の関数 ここまで ---
 
+  // ローディング中の表示
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-100 flex flex-col items-center justify-center py-12 px-4">
@@ -199,6 +280,7 @@ export default function AdminPage() {
     );
   }
 
+  // エラー発生時の表示
   if (error) {
     return (
       <div className="min-h-screen bg-gray-100 flex flex-col items-center justify-center py-12 px-4">
@@ -220,6 +302,88 @@ export default function AdminPage() {
           管理者ダッシュボード
         </h1>
 
+        {/* 報告されたプロモコードセクション */}
+        <div className="mb-12">
+          <h2 className="text-3xl font-bold text-gray-900 mb-6 text-center">
+            報告されたプロモコード ({reportedPromocodes.length})
+          </h2>
+          {reportedPromocodes.length === 0 ? (
+            <p className="text-center text-gray-600 text-lg">現在、報告されているプロモコードはありません。</p>
+          ) : (
+            <div className="overflow-x-auto bg-white shadow-lg rounded-lg">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-red-50"> {/* 報告セクションのヘッダーを赤系に */}
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      報告日時
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      プロモコードID
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      サービス名
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      コード
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      報告理由
+                    </th>
+                    <th className="relative px-6 py-3">
+                      <span className="sr-only">操作</span>
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {reportedPromocodes.map((report) => (
+                    <tr key={report.id} className="hover:bg-red-50"> {/* ホバー時に色を付ける */}
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                        {new Date(report.created_at).toLocaleString()}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                        {report.promocode_id}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                        {report.promocode?.service_name || 'N/A'}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                        {report.promocode?.code || 'N/A'}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-700 max-w-xs truncate"> {/* 長い理由を省略 */}
+                        {report.reason}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                        <button
+                          onClick={() => handleUpdateReportStatus(report.id, 'resolved')}
+                          className="text-green-600 hover:text-green-900 mr-4"
+                        >
+                          解決済みにする
+                        </button>
+                        <button
+                          onClick={() => handleUpdateReportStatus(report.id, 'dismissed')}
+                          className="text-yellow-600 hover:text-yellow-900"
+                        >
+                          却下する
+                        </button>
+                        {/* 報告されたプロモコードの編集/削除もここからできるようにリンクを追加 */}
+                        <Link href={`/admin?edit=${report.promocode_id}`} legacyBehavior>
+                           <a className="text-indigo-600 hover:text-indigo-900 ml-4">
+                             プロモコードを編集
+                           </a>
+                        </Link>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+
+        {/* 既存のプロモコード一覧セクション */}
+        <h2 className="text-3xl font-bold text-gray-900 mb-6 text-center">
+          全プロモコード一覧 ({promocodes.length})
+        </h2>
         {promocodes.length === 0 ? (
           <p className="text-center text-gray-600 text-lg">プロモコードはまだ投稿されていません。</p>
         ) : (
@@ -288,7 +452,7 @@ export default function AdminPage() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <button
-                        onClick={() => handleEditClick(promo)} // ★編集ボタンを追加
+                        onClick={() => handleEditClick(promo)} // 編集ボタン
                         className="text-indigo-600 hover:text-indigo-900 mr-4"
                       >
                         編集
