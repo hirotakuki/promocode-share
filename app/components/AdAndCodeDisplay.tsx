@@ -76,6 +76,8 @@ export default function AdAndCodeDisplay({ promocode }: AdAndCodeDisplayProps) {
           promocodeId: promocode.id,
           reason: reportReason,
         }),
+        // ★ここが変更点です★
+        credentials: 'include', 
       });
 
       if (response.ok) {
