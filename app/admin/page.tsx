@@ -1,15 +1,14 @@
 // C:\promocode-share\app\admin\page.tsx
 
-'use client'; // クライアントコンポーネントであることを明示
+'use client';
 
 import { useState, useEffect } from 'react';
-import { supabase } from '@/lib/supabase'; // 認証チェックのために保持
+import { supabase } from '@/lib/supabase'; // 認証チェックのため保持
 import { useRouter } from 'next/navigation';
 import { CATEGORIES } from '@/constants/categories';
 import Link from 'next/link';
 
 // PromocodeWithUser インターフェースの定義
-// プロモコードデータと、投稿者（profilesテーブル）の情報を結合した形
 interface PromocodeWithUser extends Record<string, any> {
   id: string;
   service_name: string;
@@ -18,22 +17,21 @@ interface PromocodeWithUser extends Record<string, any> {
   discount: string;
   category_slug: string;
   created_at: string;
-  user_id: string; // promocodes テーブルの user_id カラム
-  expiry_date: string | null; // 利用期限はオプションなので string | null
-  user?: { // user_id を介して結合される profiles テーブルのデータ
-    email: string; // profiles テーブルに email カラムがあることを想定
+  user_id: string;
+  expiry_date: string | null;
+  user?: {
+    email: string;
   };
 }
 
 // 新しい報告インターフェース
-// 報告されたプロモコードのデータ構造
 interface ReportedPromocode {
   id: string;
   promocode_id: string;
   reason: string;
   created_at: string;
-  status: 'pending' | 'resolved' | 'dismissed'; // 報告ステータス
-  promocode?: { // 報告されたプロモコードの参照情報
+  status: 'pending' | 'resolved' | 'dismissed';
+  promocode?: {
     service_name: string;
     code: string;
     discount: string;
@@ -42,167 +40,168 @@ interface ReportedPromocode {
 }
 
 export default function AdminPage() {
-  // プロモコード一覧のstate
   const [promocodes, setPromocodes] = useState<PromocodeWithUser[]>([]);
-  // 報告されたプロモコード一覧のstate
   const [reportedPromocodes, setReportedPromocodes] = useState<ReportedPromocode[]>([]);
-  // ローディング状態のstate
   const [loading, setLoading] = useState(true);
-  // エラーメッセージのstate
   const [error, setError] = useState<string | null>(null);
-  // Next.jsルーターのフック
   const router = useRouter();
 
-  // --- 編集モーダル関連のstate ---
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false); // 編集モーダルの表示状態
-  const [editingPromocode, setEditingPromocode] = useState<PromocodeWithUser | null>(null); // 編集中のプロモコードデータ
-  const [editServiceName, setEditServiceName] = useState(''); // 編集フォーム用サービス名
-  const [editCode, setEditCode] = useState(''); // 編集フォーム用コード
-  const [editDescription, setEditDescription] = useState(''); // 編集フォーム用説明
-  const [editDiscount, setEditDiscount] = useState(''); // 編集フォーム用割引内容
-  const [editCategory, setEditCategory] = useState(''); // 編集フォーム用カテゴリ
-  const [editExpiryDate, setEditExpiryDate] = useState<string | null>(null); // 編集フォーム用利用期限 (YYYY-MM-DD 形式)
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editingPromocode, setEditingPromocode] = useState<PromocodeWithUser | null>(null);
+  const [editServiceName, setEditServiceName] = useState('');
+  const [editCode, setEditCode] = useState('');
+  const [editDescription, setEditDescription] = useState('');
+  const [editDiscount, setEditDiscount] = useState('');
+  const [editCategory, setEditCategory] = useState('');
+  const [editExpiryDate, setEditExpiryDate] = useState<string | null>(null);
 
-  const [editSubmitError, setEditSubmitError] = useState<string | null>(null); // 編集送信時のエラーメッセージ
-  const [editSubmitSuccess, setEditSubmitSuccess] = useState(false); // 編集送信時の成功メッセージ
-  // --- 編集モーダル関連のstate ここまで ---
+  const [editSubmitError, setEditSubmitError] = useState<string | null>(null);
+  const [editSubmitSuccess, setEditSubmitSuccess] = useState(false);
+
+  // データをフェッチする共通関数 (APIルートから取得)
+  const fetchAdminData = async () => {
+    try {
+      const response = await fetch('/api/admin/promocodes');
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to fetch admin data from API');
+      }
+      const data = await response.json();
+      setPromocodes(data.promocodes || []);
+      setReportedPromocodes(data.reportedPromocodes || []);
+    } catch (err: any) {
+      console.error('データの取得に失敗しました:', err);
+      setError(`データの取得に失敗しました: ${err.message}`);
+    }
+  };
+
 
   // コンポーネントマウント時に管理者権限をチェックし、データをAPIからフェッチ
   useEffect(() => {
     const checkAdminAndFetchData = async () => {
-      setLoading(true); // ローディング開始
+      setLoading(true);
 
-      // Supabaseセッションの取得（認証チェックのため）
       const { data: { session }, error: sessionError } = await supabase.auth.getSession();
 
-      // セッションエラーまたは未ログインの場合
       if (sessionError || !session || !session.user) {
         setError('ログインしていません。');
-        router.push('/login'); // ログインページへリダイレクト
+        router.push('/login');
         return;
       }
 
-      // 管理者権限の確認
       const isAdmin = session.user.user_metadata?.is_admin === true;
 
       if (!isAdmin) {
         setError('管理者権限がありません。');
-        router.push('/'); // ホームページへリダイレクト
+        router.push('/');
         return;
       }
 
-      try {
-        // ★ サーバーサイドAPIルートからデータをフェッチするように変更 ★
-        const response = await fetch('/api/admin/promocodes'); // 作成したAPIルートのパス
-
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.error || 'Failed to fetch admin data from API');
-        }
-        const data = await response.json();
-
-        setPromocodes(data.promocodes || []);
-        setReportedPromocodes(data.reportedPromocodes || []);
-
-      } catch (err: any) {
-        console.error('データの取得に失敗しました:', err);
-        setError(`データの取得に失敗しました: ${err.message}`);
-      } finally {
-        setLoading(false); // ローディング終了
-      }
+      await fetchAdminData(); // データをフェッチ
+      setLoading(false);
     };
 
     checkAdminAndFetchData();
-  }, [router]); // routerが変更されたときに再実行
+  }, [router]);
 
-  // プロモコード削除ハンドラ
+  // プロモコード削除ハンドラ (APIルートを呼び出し)
   const handleDeletePromocode = async (id: string) => {
-    // ユーザーに確認メッセージを表示（alertの代わりにwindow.confirmを使用）
     if (!window.confirm('本当にこのプロモコードを削除しますか？')) {
       return;
     }
 
     try {
-      // ★ 直接 Supabase クライアントを使用（RLSが無効なのでOK） ★
-      const { error: deleteError } = await supabase
-        .from('promocodes')
-        .delete()
-        .eq('id', id);
+      const response = await fetch(`/api/admin/promocodes/${id}`, {
+        method: 'DELETE',
+      });
 
-      if (deleteError) {
-        throw deleteError;
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to delete promocode via API');
       }
 
-      // 成功したら、stateから該当プロモコードを削除
-      setPromocodes(prevPromocodes => prevPromocodes.filter(promo => promo.id !== id));
-      // 削除されたプロモコードに関連する報告もリストから削除
-      setReportedPromocodes(prevReports => prevReports.filter(report => report.promocode_id !== id));
+      // 成功したら、データを再フェッチしてUIを更新
+      await fetchAdminData();
     } catch (err: any) {
       console.error('プロモコードの削除に失敗しました:', err);
+      // alert(`プロモコードの削除に失敗しました: ${err.message}`); // 必要に応じてアラート表示
     }
   };
 
-  // 報告のステータスを更新する関数
+  // 報告のステータスを更新する関数 (APIルートを呼び出すように修正)
   const handleUpdateReportStatus = async (reportId: string, newStatus: 'resolved' | 'dismissed') => {
-    try {
-      // ★ 直接 Supabase クライアントを使用（RLSが無効なのでOK） ★
-      const { data, error: updateError } = await supabase
-        .from('reported_promocodes')
-        .update({ status: newStatus })
-        .eq('id', reportId)
-        .select(); // 更新されたデータを取得
+    // ユーザーが管理者であるかどうかの最終チェック（API側でも行うがクライアントでも念のため）
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session || session.user.user_metadata?.is_admin !== true) {
+      setError('権限がありません。');
+      router.push('/');
+      return;
+    }
 
-      if (updateError) {
-        throw updateError;
+    try {
+      // ★★★ ここが修正されたポイント ★★★
+      // Supabase の直接のエンドポイントではなく、作成したAPIルートを呼び出す
+      const response = await fetch(`/api/admin/reports/${reportId}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          // APIルートが service_role キーを使って認証するため、クライアント側でAuthorizationヘッダーなどを設定する必要はありません
+        },
+        body: JSON.stringify({ status: newStatus }),
+        // credentials: 'omit' は通常不要ですが、もしテストで追加していたら残しても構いません
+        // credentials: 'omit',
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        // APIルートからのエラーメッセージを表示する
+        throw new Error(errorData.error || 'Failed to update report status via API');
       }
 
-      // 報告リストから更新された報告を削除（またはステータスを更新）
-      setReportedPromocodes(prevReports => prevReports.filter(report => report.id !== reportId));
+      // 成功したら、データを再フェッチしてUIを更新
+      await fetchAdminData();
     } catch (err: any) {
       console.error('報告ステータスの更新に失敗しました:', err);
+      // alert(`報告ステータスの更新に失敗しました: ${err.message}`); // 必要に応じてアラート表示
     }
   };
 
-  // --- 編集モーダル関連の関数 ---
-  // 編集ボタンクリック時のハンドラ
+  // 編集ボタンクリック時のハンドラ (APIルートを呼び出し)
   const handleEditClick = (promo: PromocodeWithUser) => {
     setEditingPromocode(promo);
     setEditServiceName(promo.service_name);
     setEditCode(promo.code);
     setEditDescription(promo.description);
     setEditDiscount(promo.discount);
-    // スラッグからカテゴリ名への変換
     setEditCategory(CATEGORIES.find(cat => cat.slug === promo.category_slug)?.name || promo.category_slug);
-    setEditExpiryDate(promo.expiry_date); // YYYY-MM-DD 形式
-    setIsEditModalOpen(true); // モーダルを開く
-    setEditSubmitError(null); // エラーメッセージをクリア
-    setEditSubmitSuccess(false); // 成功メッセージをクリア
+    setEditExpiryDate(promo.expiry_date);
+    setIsEditModalOpen(true);
+    setEditSubmitError(null);
+    setEditSubmitSuccess(false);
   };
 
-  // 編集モーダルを閉じるハンドラ
+  // 編集モーダルを閉じるハンドラ (変更なし)
   const handleEditModalClose = () => {
-    setIsEditModalOpen(false); // モーダルを閉じる
-    setEditingPromocode(null); // 編集中のプロモコードをクリア
-    setEditSubmitError(null); // エラーメッセージをクリア
-    setEditSubmitSuccess(false); // 成功メッセージをクリア
+    setIsEditModalOpen(false);
+    setEditingPromocode(null);
+    setEditSubmitError(null);
+    setEditSubmitSuccess(false);
   };
 
-  // 編集フォーム送信ハンドラ
+  // 編集フォーム送信ハンドラ (APIルートを呼び出し)
   const handleEditSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!editingPromocode) return; // 編集中のプロモコードがない場合は何もしない
+    if (!editingPromocode) return;
 
-    setEditSubmitError(null); // エラーメッセージをクリア
-    setEditSubmitSuccess(false); // 成功メッセージをクリア
+    setEditSubmitError(null);
+    setEditSubmitSuccess(false);
 
-    // 説明文にURLが含まれていないかチェック
     const urlRegex = /(https?:\/\/|www\.)[^\s/$.?#].[^\s]*/i;
     if (urlRegex.test(editDescription)) {
       setEditSubmitError('説明にウェブサイトのリンクを含めることはできません。');
       return;
     }
 
-    // 選択されたカテゴリ名からスラッグを取得
     const selectedCategorySlug = CATEGORIES.find(cat => cat.name === editCategory)?.slug;
 
     if (!selectedCategorySlug) {
@@ -211,42 +210,38 @@ export default function AdminPage() {
     }
 
     try {
-      // ★ 直接 Supabase クライアントを使用（RLSが無効なのでOK） ★
-      const { data, error: updateError } = await supabase
-        .from('promocodes')
-        .update({
-          service_name: editServiceName,
-          code: editCode,
-          description: editDescription,
-          discount: editDiscount,
-          category_slug: selectedCategorySlug,
-          expiry_date: editExpiryDate, // null または YYYY-MM-DD 形式の文字列
-        })
-        .eq('id', editingPromocode.id) // 編集中のプロモコードのIDで指定
-        .select(`
-          *,
-          user:profiles(email)
-        `); // 更新されたデータを取得し、user情報も再度取得
+      const updatedData = {
+        service_name: editServiceName,
+        code: editCode,
+        description: editDescription,
+        discount: editDiscount,
+        category_slug: selectedCategorySlug,
+        expiry_date: editExpiryDate,
+      };
 
-      if (updateError) {
-        throw updateError;
+      const response = await fetch(`/api/admin/promocodes/${editingPromocode.id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(updatedData),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to update promocode via API');
       }
 
-      // 成功したら、プロモコードリストを更新
-      setPromocodes(prevPromocodes =>
-        prevPromocodes.map(promo =>
-          promo.id === editingPromocode.id ? (data[0] as PromocodeWithUser) : promo
-        )
-      );
-      setEditSubmitSuccess(true); // 成功メッセージを表示
+      // 成功したら、データを再フェッチしてUIを更新
+      await fetchAdminData();
+      setEditSubmitSuccess(true);
     } catch (err: any) {
       console.error('プロモコードの更新に失敗しました:', err);
       setEditSubmitError(`プロモコードの更新に失敗しました: ${err.message}`);
     }
   };
-  // --- 編集モーダル関連の関数 ここまで ---
 
-  // ローディング中の表示
+  // ローディング中の表示 (変更なし)
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-100 flex flex-col items-center justify-center py-12 px-4">
@@ -256,7 +251,7 @@ export default function AdminPage() {
     );
   }
 
-  // エラー発生時の表示
+  // エラー発生時の表示 (変更なし)
   if (error) {
     return (
       <div className="min-h-screen bg-gray-100 flex flex-col items-center justify-center py-12 px-4">
@@ -271,6 +266,7 @@ export default function AdminPage() {
     );
   }
 
+  // ページのメインコンテンツ (変更なし)
   return (
     <div className="min-h-screen bg-gray-100 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-7xl mx-auto">
@@ -288,7 +284,7 @@ export default function AdminPage() {
           ) : (
             <div className="overflow-x-auto bg-white shadow-lg rounded-lg">
               <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-red-50"> {/* 報告セクションのヘッダーを赤系に */}
+                <thead className="bg-red-50">
                   <tr>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       報告日時
@@ -312,7 +308,7 @@ export default function AdminPage() {
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
                   {reportedPromocodes.map((report) => (
-                    <tr key={report.id} className="hover:bg-red-50"> {/* ホバー時に色を付ける */}
+                    <tr key={report.id} className="hover:bg-red-50">
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                         {new Date(report.created_at).toLocaleString()}
                       </td>
@@ -325,7 +321,7 @@ export default function AdminPage() {
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
                         {report.promocode?.code || 'N/A'}
                       </td>
-                      <td className="px-6 py-4 text-sm text-gray-700 max-w-xs truncate"> {/* 長い理由を省略 */}
+                      <td className="px-6 py-4 text-sm text-gray-700 max-w-xs truncate">
                         {report.reason}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
@@ -341,7 +337,6 @@ export default function AdminPage() {
                         >
                           却下する
                         </button>
-                        {/* 報告されたプロモコードの編集/削除もここからできるようにリンクを追加 */}
                         <Link href={`/admin?edit=${report.promocode_id}`} legacyBehavior>
                            <a className="text-indigo-600 hover:text-indigo-900 ml-4">
                              プロモコードを編集
@@ -419,16 +414,15 @@ export default function AdminPage() {
                         '設定なし'
                       )}
                     </td>
-                    {/* 投稿者情報を表示 */}
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
-                      {promo.user?.email || 'N/A'} {/* profiles テーブルの email を表示 */}
+                      {promo.user?.email || 'N/A'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
                       {new Date(promo.created_at).toLocaleDateString()}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <button
-                        onClick={() => handleEditClick(promo)} // 編集ボタン
+                        onClick={() => handleEditClick(promo)}
                         className="text-indigo-600 hover:text-indigo-900 mr-4"
                       >
                         編集
@@ -525,8 +519,8 @@ export default function AdminPage() {
                   type="date"
                   id="edit-expiry-date"
                   className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                  value={editExpiryDate || ''} // nullの場合は空文字列を渡す
-                  onChange={(e) => setEditExpiryDate(e.target.value || null)} // 空文字列ならnullに戻す
+                  value={editExpiryDate || ''}
+                  onChange={(e) => setEditExpiryDate(e.target.value || null)}
                 />
               </div>
 
@@ -574,7 +568,6 @@ export default function AdminPage() {
           </div>
         </div>
       )}
-      {/* --- 編集モーダル ここまで --- */}
     </div>
   );
 }
