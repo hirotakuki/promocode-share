@@ -1,61 +1,51 @@
 // C:\promocode-share\app\api\report-promocode\route.ts
 
 import { NextRequest, NextResponse } from 'next/server';
-// サーバーサイドで Supabase クライアントを作成するためのインポート
 import { createServerComponentClient } from '@supabase/auth-helpers-nextjs';
-import { cookies } from 'next/headers'; // Next.js 13以降の cookies() 関数をインポート
-
-// Supabaseの環境変数はVercelに設定済みとしていますが、
-// createServerComponentClient は通常これらの変数なしで動作します。
+import { cookies } from 'next/headers';
 
 export async function POST(req: NextRequest) {
-  // POSTメソッド以外は許可しない
   if (req.method !== 'POST') {
     return NextResponse.json({ message: 'Method Not Allowed' }, { status: 405 });
   }
 
   try {
-    // サーバーサイドで認証済みの Supabase クライアントを作成
-    // cookies() を使うことで、リクエストのクッキーからセッション情報を取得します
+    // ★追加: 受信したリクエストのCookieヘッダーをログ出力
+    const cookieHeader = req.headers.get('Cookie');
+    console.log('API Route - Received Cookie Header:', cookieHeader);
+
     const supabase = createServerComponentClient({ cookies });
 
-    // ユーザーセッションを取得して、認証状態を確認
     const { data: { session }, error: sessionError } = await supabase.auth.getSession();
 
     if (sessionError || !session) {
-      console.error('Session Error or No Session:', sessionError);
-      // ユーザーが認証されていない場合は401 Unauthorizedを返す
+      console.error('API Route - Session Error or No Session:', sessionError);
+      console.error('API Route - Current Session Object:', session); // ★追加: sessionオブジェクトもログ出力
       return NextResponse.json({ message: 'Unauthorized: User not logged in' }, { status: 401 });
     }
 
-    // リクエストボディからpromocodeIdとreasonを取得
+    // ... (以降の処理は変更なし) ...
     const { promocodeId, reason } = await req.json();
 
-    // 必須フィールドのチェック
     if (!promocodeId || !reason) {
       return NextResponse.json({ message: 'Missing required fields: promocodeId and reason' }, { status: 400 });
     }
 
-    // Supabaseに報告データを挿入
     const { data, error } = await supabase
       .from('reported_promocodes')
       .insert([
         {
           promocode_id: promocodeId,
           reason: reason,
-          status: 'pending', // 初期ステータスを 'pending' (保留中) に設定
-          // ユーザーIDを報告データに追加することも可能 (RLSポリシーと同期していれば)
-          // reporter_user_id: session.user.id,
+          status: 'pending',
         }
       ]);
 
     if (error) {
       console.error('Error inserting report into Supabase:', error);
-      // Supabaseからのエラーメッセージを詳細に返す
       return NextResponse.json({ message: `Failed to report promocode: ${error.message}` }, { status: 500 });
     }
 
-    // 成功レスポンス
     return NextResponse.json({ message: 'Promocode reported successfully' }, { status: 200 });
 
   } catch (error) {
