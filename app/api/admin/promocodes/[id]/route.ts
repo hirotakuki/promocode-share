@@ -1,6 +1,9 @@
 // app/api/admin/promocodes/[id]/route.ts
 import { createClient } from '@supabase/supabase-js';
-import { NextResponse } from 'next/server';
+import { NextResponse } from 'next/server'; // NextResponse はここからインポート
+
+// Request の型はグローバルで提供されるため、通常はインポート不要
+// import { Request } from 'next/server'; // もし必要ならここからインポートを試す
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
@@ -10,11 +13,12 @@ const supabaseAdmin = createClient(supabaseUrl, supabaseServiceRoleKey, {
   },
 });
 
+// DELETE 関数
 export async function DELETE(
-  request: Request,
-  { params }: { params: { id: string } }
+  req: Request, // Request の変数名を req に変更し、グローバルの Request 型を使用
+  context: { params: { id: string } } // params を context オブジェクトで受け取る
 ) {
-  const promocodeId = params.id;
+  const promocodeId = context.params.id; // context.params から取得
 
   if (!promocodeId) {
     return NextResponse.json({ error: 'Promocode ID is required' }, { status: 400 });
@@ -38,12 +42,13 @@ export async function DELETE(
   }
 }
 
+// PATCH 関数 (同様に修正)
 export async function PATCH(
-  request: Request,
-  { params }: { params: { id: string } }
+  req: Request, // Request の変数名を req に変更し、グローバルの Request 型を使用
+  context: { params: { id: string } } // params を context オブジェクトで受け取る
 ) {
-  const promocodeId = params.id;
-  const body = await request.json(); // 更新データを取得
+  const promocodeId = context.params.id; // context.params から取得
+  const body = await req.json(); // req から body を取得
 
   if (!promocodeId) {
     return NextResponse.json({ error: 'Promocode ID is required' }, { status: 400 });
@@ -52,22 +57,21 @@ export async function PATCH(
   try {
     const { data, error: updateError } = await supabaseAdmin
       .from('promocodes')
-      .update(body) // body には service_name, code, description などが含まれる
+      .update(body)
       .eq('id', promocodeId)
       .select(`
         *,
         user:profiles(email)
-      `); // 更新されたデータを取得
+      `);
 
     if (updateError) {
       console.error('Error updating promocode:', updateError);
       return NextResponse.json({ error: updateError.message }, { status: 500 });
     }
 
-    return NextResponse.json(data[0], { status: 200 }); // 更新されたプロモコードを返す
+    return NextResponse.json(data[0], { status: 200 });
   } catch (e) {
     console.error('API Route error (PATCH promocode):', e);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
-
