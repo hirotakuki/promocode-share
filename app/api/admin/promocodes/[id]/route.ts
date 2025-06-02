@@ -1,9 +1,6 @@
 // app/api/admin/promocodes/[id]/route.ts
 import { createClient } from '@supabase/supabase-js';
-import { NextResponse } from 'next/server'; // NextResponse はここからインポート
-
-// Request の型はグローバルで提供されるため、通常はインポート不要
-// import { Request } from 'next/server'; // もし必要ならここからインポートを試す
+import { NextResponse } from 'next/server';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
@@ -15,10 +12,10 @@ const supabaseAdmin = createClient(supabaseUrl, supabaseServiceRoleKey, {
 
 // DELETE 関数
 export async function DELETE(
-  req: Request, // Request の変数名を req に変更し、グローバルの Request 型を使用
-  context: { params: { id: string } } // params を context オブジェクトで受け取る
+  request: Request, // Request の変数名は request のままでOK
+  { params }: { params: { id: string } } // ここを修正: 第2引数を直接分割代入
 ) {
-  const promocodeId = context.params.id; // context.params から取得
+  const promocodeId = params.id; // params から直接 id を取得
 
   if (!promocodeId) {
     return NextResponse.json({ error: 'Promocode ID is required' }, { status: 400 });
@@ -44,11 +41,11 @@ export async function DELETE(
 
 // PATCH 関数 (同様に修正)
 export async function PATCH(
-  req: Request, // Request の変数名を req に変更し、グローバルの Request 型を使用
-  context: { params: { id: string } } // params を context オブジェクトで受け取る
+  request: Request, // Request の変数名は request のままでOK
+  { params }: { params: { id: string } } // ここを修正: 第2引数を直接分割代入
 ) {
-  const promocodeId = context.params.id; // context.params から取得
-  const body = await req.json(); // req から body を取得
+  const promocodeId = params.id; // params から直接 id を取得
+  const body = await request.json(); // request から body を取得
 
   if (!promocodeId) {
     return NextResponse.json({ error: 'Promocode ID is required' }, { status: 400 });
