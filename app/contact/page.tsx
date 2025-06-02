@@ -1,6 +1,6 @@
 // C:\promocode-share\app\contact\page.tsx
 
-import ContactForm from '../../components/ContactForm'; // ContactForm.tsx の実際のパスに合わせて調整してください
+import ContactForm from '../components/ContactForm'; // ContactForm.tsx の実際のパスに合わせて調整してください
 
 export const metadata = {
   title: 'お問い合わせ | Promocode Share',
