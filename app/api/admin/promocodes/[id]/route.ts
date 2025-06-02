@@ -12,10 +12,12 @@ const supabaseAdmin = createClient(supabaseUrl, supabaseServiceRoleKey, {
 
 // DELETE 関数
 export async function DELETE(
-  request: Request, // Request の変数名は request のままでOK
-  { params }: { params: { id: string } } // ここを修正: 第2引数を直接分割代入
+  request: Request,
+  { params }: { params: Promise<{ id: string }> } // ここを修正: params を Promise でラップ
 ) {
-  const promocodeId = params.id; // params から直接 id を取得
+  // params Promise を解決してから id にアクセス
+  const resolvedParams = await params;
+  const promocodeId = resolvedParams.id;
 
   if (!promocodeId) {
     return NextResponse.json({ error: 'Promocode ID is required' }, { status: 400 });
@@ -41,11 +43,13 @@ export async function DELETE(
 
 // PATCH 関数 (同様に修正)
 export async function PATCH(
-  request: Request, // Request の変数名は request のままでOK
-  { params }: { params: { id: string } } // ここを修正: 第2引数を直接分割代入
+  request: Request,
+  { params }: { params: Promise<{ id: string }> } // ここを修正: params を Promise でラップ
 ) {
-  const promocodeId = params.id; // params から直接 id を取得
-  const body = await request.json(); // request から body を取得
+  // params Promise を解決してから id にアクセス
+  const resolvedParams = await params;
+  const promocodeId = resolvedParams.id;
+  const body = await request.json();
 
   if (!promocodeId) {
     return NextResponse.json({ error: 'Promocode ID is required' }, { status: 400 });
