@@ -1,9 +1,9 @@
 // C:\promocode-share\app\admin\page.tsx
 
-'use client';
+'use client'; // クライアントコンポーネントであることを明示
 
 import { useState, useEffect } from 'react';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/lib/supabase'; // 認証チェックのために保持
 import { useRouter } from 'next/navigation';
 import { CATEGORIES } from '@/constants/categories';
 import Link from 'next/link';
@@ -67,12 +67,12 @@ export default function AdminPage() {
   const [editSubmitSuccess, setEditSubmitSuccess] = useState(false); // 編集送信時の成功メッセージ
   // --- 編集モーダル関連のstate ここまで ---
 
-  // コンポーネントマウント時に管理者権限をチェックし、データをフェッチ
+  // コンポーネントマウント時に管理者権限をチェックし、データをAPIからフェッチ
   useEffect(() => {
     const checkAdminAndFetchData = async () => {
       setLoading(true); // ローディング開始
 
-      // Supabaseセッションの取得
+      // Supabaseセッションの取得（認証チェックのため）
       const { data: { session }, error: sessionError } = await supabase.auth.getSession();
 
       // セッションエラーまたは未ログインの場合
@@ -92,34 +92,17 @@ export default function AdminPage() {
       }
 
       try {
-        // 全プロモコードと投稿者情報（profiles テーブルから）を結合して取得
-        const { data: promoData, error: fetchPromoError } = await supabase
-          .from('promocodes')
-          .select(`
-            *,
-            user:profiles(email)
-          `)
-          .order('created_at', { ascending: false }); // 作成日時で降順ソート
+        // ★ サーバーサイドAPIルートからデータをフェッチするように変更 ★
+        const response = await fetch('/api/admin/promocodes'); // 作成したAPIルートのパス
 
-        if (fetchPromoError) {
-          throw fetchPromoError;
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || 'Failed to fetch admin data from API');
         }
-        setPromocodes(promoData as unknown as PromocodeWithUser[] || []); // 取得したプロモコードをstateにセット
+        const data = await response.json();
 
-        // 報告されたプロモコードを取得
-        const { data: reportedData, error: fetchReportedError } = await supabase
-          .from('reported_promocodes')
-          .select(`
-            *,
-            promocode:promocodes(service_name, code, discount, category_slug)
-          `) // 報告されたプロモコードの詳細も結合して取得
-          .eq('status', 'pending') // ステータスが 'pending' (保留中) のもののみ取得
-          .order('created_at', { ascending: false }); // 作成日時で降順ソート
-
-        if (fetchReportedError) {
-          throw fetchReportedError;
-        }
-        setReportedPromocodes(reportedData as ReportedPromocode[] || []); // 取得した報告をstateにセット
+        setPromocodes(data.promocodes || []);
+        setReportedPromocodes(data.reportedPromocodes || []);
 
       } catch (err: any) {
         console.error('データの取得に失敗しました:', err);
@@ -140,7 +123,7 @@ export default function AdminPage() {
     }
 
     try {
-      // Supabaseからプロモコードを削除
+      // ★ 直接 Supabase クライアントを使用（RLSが無効なのでOK） ★
       const { error: deleteError } = await supabase
         .from('promocodes')
         .delete()
@@ -154,18 +137,15 @@ export default function AdminPage() {
       setPromocodes(prevPromocodes => prevPromocodes.filter(promo => promo.id !== id));
       // 削除されたプロモコードに関連する報告もリストから削除
       setReportedPromocodes(prevReports => prevReports.filter(report => report.promocode_id !== id));
-      // ユーザーに成功メッセージを表示（alertの代わりにカスタムUIを使用することも可能）
-      // alert('プロモコードが正常に削除されました。');
     } catch (err: any) {
       console.error('プロモコードの削除に失敗しました:', err);
-      // alert(`プロモコードの削除に失敗しました: ${err.message}`);
     }
   };
 
   // 報告のステータスを更新する関数
   const handleUpdateReportStatus = async (reportId: string, newStatus: 'resolved' | 'dismissed') => {
     try {
-      // Supabaseで報告のステータスを更新
+      // ★ 直接 Supabase クライアントを使用（RLSが無効なのでOK） ★
       const { data, error: updateError } = await supabase
         .from('reported_promocodes')
         .update({ status: newStatus })
@@ -177,12 +157,9 @@ export default function AdminPage() {
       }
 
       // 報告リストから更新された報告を削除（またはステータスを更新）
-      // ここでは、ステータスが変更された報告は「pending」リストから削除されるようにフィルター
       setReportedPromocodes(prevReports => prevReports.filter(report => report.id !== reportId));
-      // alert(`報告を「${newStatus === 'resolved' ? '解決済み' : '却下済み'}」にしました。`);
     } catch (err: any) {
       console.error('報告ステータスの更新に失敗しました:', err);
-      // alert(`報告ステータスの更新に失敗しました: ${err.message}`);
     }
   };
 
@@ -234,7 +211,7 @@ export default function AdminPage() {
     }
 
     try {
-      // Supabaseでプロモコードを更新
+      // ★ 直接 Supabase クライアントを使用（RLSが無効なのでOK） ★
       const { data, error: updateError } = await supabase
         .from('promocodes')
         .update({
@@ -247,8 +224,8 @@ export default function AdminPage() {
         })
         .eq('id', editingPromocode.id) // 編集中のプロモコードのIDで指定
         .select(`
-            *,
-            user:profiles(email)
+          *,
+          user:profiles(email)
         `); // 更新されたデータを取得し、user情報も再度取得
 
       if (updateError) {
@@ -262,7 +239,6 @@ export default function AdminPage() {
         )
       );
       setEditSubmitSuccess(true); // 成功メッセージを表示
-      // handleEditModalClose(); // 自動で閉じるか、ユーザーに成功メッセージを見せるか検討
     } catch (err: any) {
       console.error('プロモコードの更新に失敗しました:', err);
       setEditSubmitError(`プロモコードの更新に失敗しました: ${err.message}`);
