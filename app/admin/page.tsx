@@ -3,7 +3,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { supabase } from '@/lib/supabase'; // 認証チェックのため保持
+import { supabase } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
 import { CATEGORIES } from '@/constants/categories';
 import Link from 'next/link';
@@ -39,6 +39,9 @@ interface ReportedPromocode {
   };
 }
 
+// レポートフィルターの型定義
+type ReportFilter = 'pending' | 'resolved' | 'dismissed' | 'all';
+
 export default function AdminPage() {
   const [promocodes, setPromocodes] = useState<PromocodeWithUser[]>([]);
   const [reportedPromocodes, setReportedPromocodes] = useState<ReportedPromocode[]>([]);
@@ -57,6 +60,9 @@ export default function AdminPage() {
 
   const [editSubmitError, setEditSubmitError] = useState<string | null>(null);
   const [editSubmitSuccess, setEditSubmitSuccess] = useState(false);
+
+  // ★追加: 報告フィルターの状態
+  const [reportFilter, setReportFilter] = useState<ReportFilter>('pending');
 
   // データをフェッチする共通関数 (APIルートから取得)
   const fetchAdminData = async () => {
@@ -129,7 +135,7 @@ export default function AdminPage() {
   };
 
   // 報告のステータスを更新する関数 (APIルートを呼び出すように修正)
-  const handleUpdateReportStatus = async (reportId: string, newStatus: 'resolved' | 'dismissed') => {
+  const handleUpdateReportStatus = async (reportId: string, newStatus: 'resolved' | 'dismissed' | 'pending') => {
     // ユーザーが管理者であるかどうかの最終チェック（API側でも行うがクライアントでも念のため）
     const { data: { session } } = await supabase.auth.getSession();
     if (!session || session.user.user_metadata?.is_admin !== true) {
@@ -139,22 +145,16 @@ export default function AdminPage() {
     }
 
     try {
-      // ★★★ ここが修正されたポイント ★★★
-      // Supabase の直接のエンドポイントではなく、作成したAPIルートを呼び出す
       const response = await fetch(`/api/admin/reports/${reportId}`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
-          // APIルートが service_role キーを使って認証するため、クライアント側でAuthorizationヘッダーなどを設定する必要はありません
         },
         body: JSON.stringify({ status: newStatus }),
-        // credentials: 'omit' は通常不要ですが、もしテストで追加していたら残しても構いません
-        // credentials: 'omit',
       });
 
       if (!response.ok) {
         const errorData = await response.json();
-        // APIルートからのエラーメッセージを表示する
         throw new Error(errorData.error || 'Failed to update report status via API');
       }
 
@@ -241,6 +241,14 @@ export default function AdminPage() {
     }
   };
 
+  // ★追加: フィルターされた報告済みプロモコードを計算
+  const filteredReportedPromocodes = reportedPromocodes.filter(report => {
+    if (reportFilter === 'all') {
+      return true;
+    }
+    return report.status === reportFilter;
+  });
+
   // ローディング中の表示 (変更なし)
   if (loading) {
     return (
@@ -266,7 +274,7 @@ export default function AdminPage() {
     );
   }
 
-  // ページのメインコンテンツ (変更なし)
+  // ページのメインコンテンツ
   return (
     <div className="min-h-screen bg-gray-100 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-7xl mx-auto">
@@ -276,11 +284,30 @@ export default function AdminPage() {
 
         {/* 報告されたプロモコードセクション */}
         <div className="mb-12">
-          <h2 className="text-3xl font-bold text-gray-900 mb-6 text-center">
-            報告されたプロモコード ({reportedPromocodes.length})
-          </h2>
-          {reportedPromocodes.length === 0 ? (
-            <p className="text-center text-gray-600 text-lg">現在、報告されているプロモコードはありません。</p>
+          <div className="flex justify-center items-center gap-4 mb-6">
+            <h2 className="text-3xl font-bold text-gray-900 text-center">
+              報告されたプロモコード ({filteredReportedPromocodes.length})
+            </h2>
+            {/* ★追加: フィルターのドロップダウン */}
+            <select
+              value={reportFilter}
+              onChange={(e) => setReportFilter(e.target.value as ReportFilter)}
+              className="mt-1 block py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+            >
+              <option value="pending">未解決</option>
+              <option value="resolved">解決済み</option>
+              <option value="dismissed">却下済み</option>
+              <option value="all">全て</option>
+            </select>
+          </div>
+
+          {filteredReportedPromocodes.length === 0 ? (
+            <p className="text-center text-gray-600 text-lg">
+              {reportFilter === 'pending' ? '現在、未解決の報告はありません。' :
+               reportFilter === 'resolved' ? '現在、解決済みの報告はありません。' :
+               reportFilter === 'dismissed' ? '現在、却下済みの報告はありません。' :
+               '現在、報告されているプロモコードはありません。'}
+            </p>
           ) : (
             <div className="overflow-x-auto bg-white shadow-lg rounded-lg">
               <table className="min-w-full divide-y divide-gray-200">
@@ -301,13 +328,16 @@ export default function AdminPage() {
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       報告理由
                     </th>
+                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      ステータス
+                    </th>
                     <th className="relative px-6 py-3">
                       <span className="sr-only">操作</span>
                     </th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {reportedPromocodes.map((report) => (
+                  {filteredReportedPromocodes.map((report) => ( // ★フィルタリングされたリストを使用
                     <tr key={report.id} className="hover:bg-red-50">
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                         {new Date(report.created_at).toLocaleString()}
@@ -324,19 +354,35 @@ export default function AdminPage() {
                       <td className="px-6 py-4 text-sm text-gray-700 max-w-xs truncate">
                         {report.reason}
                       </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                        {report.status === 'pending' ? '未解決' :
+                         report.status === 'resolved' ? '解決済み' :
+                         '却下済み'}
+                      </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                        <button
-                          onClick={() => handleUpdateReportStatus(report.id, 'resolved')}
-                          className="text-green-600 hover:text-green-900 mr-4"
-                        >
-                          解決済みにする
-                        </button>
-                        <button
-                          onClick={() => handleUpdateReportStatus(report.id, 'dismissed')}
-                          className="text-yellow-600 hover:text-yellow-900"
-                        >
-                          却下する
-                        </button>
+                        {report.status === 'pending' ? (
+                          <>
+                            <button
+                              onClick={() => handleUpdateReportStatus(report.id, 'resolved')}
+                              className="text-green-600 hover:text-green-900 mr-4"
+                            >
+                              解決済みにする
+                            </button>
+                            <button
+                              onClick={() => handleUpdateReportStatus(report.id, 'dismissed')}
+                              className="text-yellow-600 hover:text-yellow-900"
+                            >
+                              却下する
+                            </button>
+                          </>
+                        ) : (
+                          <button
+                            onClick={() => handleUpdateReportStatus(report.id, 'pending')}
+                            className="text-blue-600 hover:text-blue-900"
+                          >
+                            未解決に戻す
+                          </button>
+                        )}
                         <Link href={`/admin?edit=${report.promocode_id}`} legacyBehavior>
                            <a className="text-indigo-600 hover:text-indigo-900 ml-4">
                              プロモコードを編集
@@ -351,7 +397,7 @@ export default function AdminPage() {
           )}
         </div>
 
-        {/* 既存のプロモコード一覧セクション */}
+        {/* 既存のプロモコード一覧セクション (変更なし) */}
         <h2 className="text-3xl font-bold text-gray-900 mb-6 text-center">
           全プロモコード一覧 ({promocodes.length})
         </h2>
