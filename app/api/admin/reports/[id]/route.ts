@@ -12,9 +12,11 @@ const supabaseAdmin = createClient(supabaseUrl, supabaseServiceRoleKey, {
 
 export async function PATCH(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> } // ★ここを修正: params を Promise でラップ★
 ) {
-  const reportId = params.id;
+  // ★追加: params Promise を解決してから id にアクセス★
+  const resolvedParams = await params;
+  const reportId = resolvedParams.id;
   const { status } = await request.json(); // status (e.g., 'resolved', 'dismissed') を取得
 
   if (!reportId || !status) {
