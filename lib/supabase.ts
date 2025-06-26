@@ -16,7 +16,7 @@ export const supabase = createClientComponentClient({
   cookieOptions: {
     // domain に Vercel のデプロイURLのドメインを指定します。
     // 例: '.promocode-share.vercel.app'
-    domain: '.promocode-share.vercel.app', 
+    domain: '.promocode-share.com', 
     // Secure 属性: HTTPS環境では必須です。本番環境でtrueにします。
     // VercelはHTTPSなので、production環境であればtrueにするのが適切です。
     // NODE_ENV はVercelで自動的に 'production' に設定されます。
